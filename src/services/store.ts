@@ -129,6 +129,7 @@ export interface OrderEscrowEntity {
   handshakePinHash: string;
   plainPinForDev?: string;
   pinAttemptsCount: number;
+  pinLockedAt?: Date;
   pinVerifiedAt?: Date;
   settledAt?: Date;
   createdAt: Date;
@@ -747,9 +748,10 @@ export class UniHiveStore {
         id: 'escrow-demo-dispute-1',
         orderId: order1Id,
         itemSubtotal: 24000,
-        deliveryFee: 250,
-        platformFee: 100,
+        courierDeliveryFee: 250,
+        platformTechFee: 100,
         totalAmount: 24350,
+        paystackReference: 'ref-demo-dispute-1',
         paystackPaymentStatus: 'held_in_escrow',
         handshakePinHash: '$2a$08$demoPinHashLocked123',
         pinAttemptsCount: 3,
@@ -807,9 +809,10 @@ export class UniHiveStore {
         id: 'escrow-demo-dispute-2',
         orderId: order2Id,
         itemSubtotal: 9000,
-        deliveryFee: 250,
-        platformFee: 100,
+        courierDeliveryFee: 250,
+        platformTechFee: 100,
         totalAmount: 9350,
+        paystackReference: 'ref-demo-dispute-2',
         paystackPaymentStatus: 'held_in_escrow',
         handshakePinHash: '$2a$08$demoPinHashLocked456',
         pinAttemptsCount: 3,

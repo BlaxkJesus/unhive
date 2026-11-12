@@ -203,6 +203,25 @@ const UniHiveApp: React.FC = () => {
     );
   }
 
+  // Strict Admin Isolation: When the admin logs in, display ONLY the Admin Console and nothing else
+  if (activeRole === 'admin') {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#0B1120',
+          color: '#F8FAFC',
+          width: '100%',
+        }}
+      >
+        {showSplash && <SplashScreen minDurationMs={2000} onComplete={() => setShowSplash(false)} />}
+        <AdminConsole />
+      </div>
+    );
+  }
+
   const renderContent = () => {
     switch (currentView) {
       case 'marketplace':
@@ -240,8 +259,6 @@ const UniHiveApp: React.FC = () => {
                     ? 'vendor'
                     : activeRole === 'courier'
                     ? 'courier'
-                    : activeRole === 'admin'
-                    ? 'admin'
                     : 'marketplace'
                 )
               }
@@ -279,14 +296,6 @@ const UniHiveApp: React.FC = () => {
         }
         return <CourierPortal />;
       case 'admin':
-        if (activeRole !== 'admin') {
-          return (
-            <RoleRestrictedView
-              requiredRole="admin"
-              onNavigateHome={() => setCurrentView('marketplace')}
-            />
-          );
-        }
         return <AdminConsole />;
       case 'panoramic':
         return (

@@ -231,6 +231,51 @@ export const API = {
       body: JSON.stringify(payload),
       token,
     }),
+  getFleetCouriers: (campusId?: string, token?: string) =>
+    apiRequest(`/admin/couriers${campusId ? `?campusId=${encodeURIComponent(campusId)}` : ''}`, {
+      token,
+    }),
+  updateCourierStatus: (
+    courierId: string,
+    payload: { isApproved?: boolean; status?: string; isSuspended?: boolean },
+    token: string
+  ) =>
+    apiRequest(`/admin/couriers/${courierId}/status`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      token,
+    }),
+  getCampusVendors: (campusId?: string, token?: string) =>
+    apiRequest(`/admin/vendors${campusId ? `?campusId=${encodeURIComponent(campusId)}` : ''}`, {
+      token,
+    }),
+  updateVendorStatus: (
+    vendorId: string,
+    payload: { isApproved?: boolean; isSuspended?: boolean },
+    token: string
+  ) =>
+    apiRequest(`/admin/vendors/${vendorId}/status`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      token,
+    }),
+  getAdminProducts: (params?: { campusId?: string; vendorId?: string }, token?: string) => {
+    const searchParams = new URLSearchParams();
+    if (params?.campusId) searchParams.append('campusId', params.campusId);
+    if (params?.vendorId) searchParams.append('vendorId', params.vendorId);
+    const qs = searchParams.toString();
+    return apiRequest(`/admin/products${qs ? `?${qs}` : ''}`, { token });
+  },
+  moderateProduct: (
+    productId: string,
+    payload: { isActive: boolean; reason?: string },
+    token: string
+  ) =>
+    apiRequest(`/admin/products/${productId}/moderate`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      token,
+    }),
 
   // Vendor
   getVendorOrders: (token: string) =>

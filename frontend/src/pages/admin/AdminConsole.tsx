@@ -6,6 +6,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import { UniHiveLogo } from '../../components/common/UniHiveLogo';
 import { API } from '../../config/api';
 import { DisputeMediationDesk } from './DisputeMediationDesk';
+import { FleetAndMerchantDesk } from './FleetAndMerchantDesk';
 import {
   ShieldCheck,
   Lock,
@@ -23,16 +24,18 @@ import {
   Check,
   X,
   MessageSquare,
+  LogOut,
+  MapPin,
 } from 'lucide-react';
 
 export const AdminConsole: React.FC = () => {
-  const { token } = useAuth();
-  const { currentCampus, hostels } = useCampus();
+  const { token, logout } = useAuth();
+  const { campuses, currentCampus, setCurrentCampus, hostels } = useCampus();
   const { socket, joinAdmin, isConnected } = useSocket();
   const { isMobile } = useResponsive();
 
   const [activeAdminTab, setActiveAdminTab] = useState<
-    'overview' | 'disputes' | 'stream' | 'payouts'
+    'overview' | 'disputes' | 'fleet' | 'stores' | 'products' | 'stream' | 'payouts'
   >('overview');
 
   const [stats, setStats] = useState<any>({
@@ -49,6 +52,12 @@ export const AdminConsole: React.FC = () => {
   const [disputes, setDisputes] = useState<any[]>([]);
   const [stream, setStream] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
+
+  // Option B: Fleet Couriers, Campus Vendors, Product Moderation
+  const [couriers, setCouriers] = useState<any[]>([]);
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -164,6 +173,119 @@ export const AdminConsole: React.FC = () => {
     } catch (err) {
       console.warn('Could not load payouts', err);
       setPayouts([]);
+    }
+
+    // Option B: Load Fleet Couriers, Campus Stores, and Products
+    try {
+      const couriersRes = await API.getFleetCouriers(currentCampus?.id, token);
+      if (couriersRes.data && Array.isArray(couriersRes.data)) {
+        setCouriers(couriersRes.data);
+      }
+    } catch (err) {
+      console.warn('Could not load fleet couriers', err);
+    }
+
+    try {
+      const vendorsRes = await API.getCampusVendors(currentCampus?.id, token);
+      if (vendorsRes.data && Array.isArray(vendorsRes.data)) {
+        setVendors(vendorsRes.data);
+      }
+    } catch (err) {
+      console.warn('Could not load campus vendors', err);
+    }
+
+    try {
+      const productsRes = await API.getAdminProducts({ campusId: currentCampus?.id }, token);
+      if (productsRes.data && Array.isArray(productsRes.data)) {
+        setProducts(productsRes.data);
+      }
+    } catch (err) {
+      console.warn('Could not load products for moderation', err);
+    }
+  };
+
+  const handleToggleCourierStatus = async (
+    courierId: string,
+    _currentStatus: string,
+    isSuspended: boolean
+  ) => {
+    if (!token) return;
+    setActionLoadingId(courierId);
+    try {
+      const newSuspended = !isSuspended;
+      const res = await API.updateCourierStatus(
+        courierId,
+        {
+          isSuspended: newSuspended,
+          status: newSuspended ? 'offline' : 'available',
+        },
+        token
+      );
+      if (res.data) {
+        setCouriers((prev) =>
+          prev.map((c) =>
+            c.id === courierId
+              ? { ...c, isSuspended: newSuspended, status: newSuspended ? 'offline' : 'available' }
+              : c
+          )
+        );
+        setResolutionMessage(
+          `✓ Fleet Runner status updated: ${newSuspended ? 'Suspended' : 'Activated & Available'}`
+        );
+      }
+    } catch (err: any) {
+      setResolutionMessage(`❌ Failed to update runner: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleToggleVendorStatus = async (vendorId: string, isApproved: boolean) => {
+    if (!token) return;
+    setActionLoadingId(vendorId);
+    try {
+      const newApproved = !isApproved;
+      const res = await API.updateVendorStatus(vendorId, { isApproved: newApproved }, token);
+      if (res.data) {
+        setVendors((prev) =>
+          prev.map((v) => (v.id === vendorId ? { ...v, isApproved: newApproved } : v))
+        );
+        setResolutionMessage(
+          `✓ Campus Store status updated: ${newApproved ? 'Verified (Selling Privileges Unlocked)' : 'Suspended'}`
+        );
+      }
+    } catch (err: any) {
+      setResolutionMessage(`❌ Failed to update vendor: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleModerateProduct = async (productId: string, currentActive: boolean) => {
+    if (!token) return;
+    setActionLoadingId(productId);
+    try {
+      const newActive = !currentActive;
+      const res = await API.moderateProduct(
+        productId,
+        {
+          isActive: newActive,
+          reason: newActive ? 'Relisted by Proctor' : 'Delisted for policy compliance / contraband check',
+        },
+        token
+      );
+      if (res.data) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === productId ? { ...p, isActive: newActive } : p))
+        );
+        setResolutionMessage(
+          `✓ Product catalog updated: ${newActive ? 'Active in Marketplace' : 'Delisted & Hidden from Students'}`
+        );
+      }
+    } catch (err: any) {
+      setResolutionMessage(`❌ Failed to moderate product: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -729,23 +851,46 @@ export const AdminConsole: React.FC = () => {
             </div>
           </div>
 
-          <div
-            style={{
-              background: 'rgba(16, 185, 129, 0.15)',
-              border: '1px solid rgba(16, 185, 129, 0.35)',
-              color: '#10B981',
-              fontSize: '11px',
-              fontWeight: 800,
-              padding: '4px 12px',
-              borderRadius: '20px',
-              letterSpacing: '0.3px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
-          >
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
-            <span>Live Escrow</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div
+              style={{
+                background: 'rgba(16, 185, 129, 0.15)',
+                border: '1px solid rgba(16, 185, 129, 0.35)',
+                color: '#10B981',
+                fontSize: '11px',
+                fontWeight: 800,
+                padding: '4px 10px',
+                borderRadius: '20px',
+                letterSpacing: '0.3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+              }}
+            >
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
+              <span>Live Ops</span>
+            </div>
+
+            <button
+              onClick={() => logout()}
+              style={{
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#FCA5A5',
+                padding: '5px 10px',
+                borderRadius: '8px',
+                fontSize: '11px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              title="Sign out from Admin Console"
+            >
+              <LogOut size={12} />
+              <span>Sign Out</span>
+            </button>
           </div>
         </div>
 
@@ -755,17 +900,37 @@ export const AdminConsole: React.FC = () => {
             background: '#11192C',
             border: '1px solid #1E293B',
             borderRadius: '14px',
-            padding: '11px 14px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
             <span style={{ fontSize: '15px' }}>🎓</span>
-            <span style={{ fontSize: '13px', fontWeight: 800, color: '#F8FAFC' }}>
-              {currentCampus ? currentCampus.name : "Redeemer's Univ (Ede)"}
-            </span>
+            <select
+              value={currentCampus?.id || ''}
+              onChange={(e) => {
+                const found = campuses.find((c) => c.id === e.target.value);
+                if (found) setCurrentCampus(found);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#F8FAFC',
+                fontSize: '13px',
+                fontWeight: 800,
+                outline: 'none',
+                width: '100%',
+                cursor: 'pointer',
+              }}
+            >
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id} style={{ background: '#0F172A', color: '#FFF' }}>
+                  {c.name} ({c.shortName})
+                </option>
+              ))}
+            </select>
           </div>
           <ChevronDown size={16} color="#94A3B8" />
         </div>
@@ -786,6 +951,9 @@ export const AdminConsole: React.FC = () => {
               label: `Disputes (${openDisputes.length})`,
               badgeColor: openDisputes.length > 0 ? '#EF4444' : undefined,
             },
+            { id: 'fleet', label: `Fleet (${couriers.length})` },
+            { id: 'stores', label: `Stores (${vendors.length})` },
+            { id: 'products', label: `Products (${products.length})` },
             { id: 'stream', label: `Stream (${stream.length})` },
             { id: 'payouts', label: 'Payouts' },
           ].map((tab) => {
@@ -853,6 +1021,20 @@ export const AdminConsole: React.FC = () => {
             onRefresh={loadAdminData}
             resolutionMessage={resolutionMessage}
             onClearMessage={() => setResolutionMessage(null)}
+          />
+        ) : activeAdminTab === 'fleet' || activeAdminTab === 'stores' || activeAdminTab === 'products' ? (
+          <FleetAndMerchantDesk
+            viewMode={activeAdminTab}
+            couriers={couriers}
+            vendors={vendors}
+            products={products}
+            onToggleCourierStatus={handleToggleCourierStatus}
+            onToggleVendorStatus={handleToggleVendorStatus}
+            onModerateProduct={handleModerateProduct}
+            onOpenProvisionModal={() => setIsProvisionModalOpen(true)}
+            onRefresh={loadAdminData}
+            actionLoadingId={actionLoadingId}
+            campusName={currentCampus?.name}
           />
         ) : (
           <>
@@ -1286,6 +1468,43 @@ export const AdminConsole: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Campus Switcher */}
+          <div
+            style={{
+              background: '#0F172A',
+              border: '1px solid #334155',
+              borderRadius: '8px',
+              padding: '4px 10px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <MapPin size={13} color="#F59E0B" />
+            <select
+              value={currentCampus?.id || ''}
+              onChange={(e) => {
+                const found = campuses.find((c) => c.id === e.target.value);
+                if (found) setCurrentCampus(found);
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#F8FAFC',
+                fontSize: '12px',
+                fontWeight: 700,
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              {campuses.map((c) => (
+                <option key={c.id} value={c.id} style={{ background: '#0F172A', color: '#FFF' }}>
+                  {c.name} ({c.shortName})
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={loadAdminData}
             style={{
@@ -1303,6 +1522,7 @@ export const AdminConsole: React.FC = () => {
           >
             <RefreshCw size={12} /> Sync
           </button>
+
           <div
             style={{
               background: '#0F172A',
@@ -1318,6 +1538,27 @@ export const AdminConsole: React.FC = () => {
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: isConnected ? '#10B981' : '#EF4444' }}></span>
             <span>Real-time Dispatch Engine: <strong>{isConnected ? 'Active' : 'Connecting'}</strong></span>
           </div>
+
+          <button
+            onClick={() => logout()}
+            style={{
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid rgba(239, 68, 68, 0.4)',
+              color: '#FCA5A5',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '12px',
+              fontWeight: 700,
+            }}
+            title="Log out from Admin Operations"
+          >
+            <LogOut size={13} />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
 
@@ -1339,6 +1580,9 @@ export const AdminConsole: React.FC = () => {
             label: `Dispute Mediation Desk (${openDisputes.length} Flagged)`,
             isAlert: openDisputes.length > 0,
           },
+          { id: 'fleet', label: `SwiftDrop Fleet (${couriers.length} Runners)` },
+          { id: 'stores', label: `Campus Stores (${vendors.length} Merchants)` },
+          { id: 'products', label: `Product Moderation (${products.length} Items)` },
           { id: 'stream', label: `Campus Dispatch Stream (${stream.length} Active)` },
           { id: 'payouts', label: 'Atomic Escrow Payout Ledger' },
         ].map((tab) => {
@@ -1405,6 +1649,25 @@ export const AdminConsole: React.FC = () => {
           onRefresh={loadAdminData}
           resolutionMessage={resolutionMessage}
           onClearMessage={() => setResolutionMessage(null)}
+        />
+      ) : activeAdminTab === 'fleet' || activeAdminTab === 'stores' || activeAdminTab === 'products' ? (
+        <FleetAndMerchantDesk
+          viewMode={activeAdminTab}
+          couriers={couriers}
+          vendors={vendors}
+          products={products}
+          onToggleCourierStatus={handleToggleCourierStatus}
+          onToggleVendorStatus={handleToggleVendorStatus}
+          onModerateProduct={handleModerateProduct}
+          onOpenProvisionModal={() => {
+            setRunnerPassword(`RUN-FLEET-${Math.floor(1000 + Math.random() * 9000)}`);
+            setProvisionSuccessData(null);
+            setProvisionError(null);
+            setIsProvisionModalOpen(true);
+          }}
+          onRefresh={loadAdminData}
+          actionLoadingId={actionLoadingId}
+          campusName={currentCampus?.name}
         />
       ) : (
         <>

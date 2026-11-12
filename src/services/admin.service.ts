@@ -203,8 +203,8 @@ export class AdminService {
         vendorName: vendor?.businessName || 'Campus Vendor',
         amount: escrow?.totalAmount || 0,
         itemSubtotal: escrow?.itemSubtotal || 0,
-        deliveryFee: escrow?.courierDeliveryFee || escrow?.deliveryFee || 250,
-        platformFee: escrow?.platformTechFee || escrow?.platformFee || 100,
+        deliveryFee: escrow?.courierDeliveryFee || 250,
+        platformFee: escrow?.platformTechFee || 100,
         reason: d.reason,
         status: d.status,
         category,
@@ -574,7 +574,8 @@ export class AdminService {
         bankName: params.bankName || 'Kuda Microfinance Bank',
         accountNumber: params.accountNumber || '2001928374',
         accountName: user.fullName,
-        completedTripsCount: 0,
+        totalTripsCompleted: 0,
+        rating: 5.0,
         isApproved: true,
         currentHostelLocation: hostel.name,
       };
@@ -627,11 +628,11 @@ ${welcomeMessage}
         roles: user.roles,
       },
       courierProfile: {
-        id: courierProfile.id,
+        id: courierProfile!.id,
         baseHostelId: hostel.id,
         baseHostelName: hostel.name,
-        status: courierProfile.status,
-        isApproved: courierProfile.isApproved,
+        status: courierProfile!.status,
+        isApproved: courierProfile!.isApproved,
       },
       credentials: {
         phone: cleanPhone,
@@ -640,6 +641,218 @@ ${welcomeMessage}
         whatsappLink,
         welcomeMessage,
       },
+    };
+  }
+
+  /**
+   * Option B1: List all contracted fleet couriers
+   */
+  static getCouriers(campusId?: string) {
+    let couriers = db.courierProfiles;
+    if (campusId) {
+      couriers = couriers.filter((c) => c.campusId === campusId);
+    }
+
+    return couriers.map((c) => {
+      const user = db.users.find((u) => u.id === c.userId);
+      const hostel = db.hostels.find((h) => h.id === (c.baseHostelId || c.hostelId));
+      const campus = db.campuses.find((camp) => camp.id === c.campusId);
+
+      // WhatsApp link helper
+      let intlPhone = user?.phone || '';
+      if (intlPhone.startsWith('0')) intlPhone = '234' + intlPhone.slice(1);
+      else if (intlPhone.startsWith('+')) intlPhone = intlPhone.replace('+', '');
+      else if (intlPhone && !intlPhone.startsWith('234')) intlPhone = '234' + intlPhone;
+
+      const pingMessage = `Hello ${user?.fullName || 'Runner'}! 🚴\nAdmin Checkpoint ping from UniHive Operations (${campus?.name || 'Campus'}). Station: ${hostel?.name || 'Base Hostel'}. Status: ${(c.status || 'available').toUpperCase()}.`;
+      const whatsappPingLink = intlPhone ? `https://wa.me/${intlPhone}?text=${encodeURIComponent(pingMessage)}` : '';
+
+      return {
+        id: c.id,
+        userId: c.userId,
+        fullName: user?.fullName || 'SwiftDrop Runner',
+        phone: user?.phone || '',
+        whatsappPhone: intlPhone ? `+${intlPhone}` : '',
+        whatsappPingLink,
+        email: user?.email || '',
+        matricNumber: c.matricNumber || user?.matricNumber || 'FLEET-RUNNER',
+        baseHostelId: c.baseHostelId || c.hostelId || '',
+        baseHostelName: hostel?.name || 'Porter Lodge Base',
+        campusId: c.campusId,
+        campusName: campus?.name || '',
+        status: c.status || 'available',
+        rating: c.rating || 4.9,
+        totalTripsCompleted: c.totalTripsCompleted || 0,
+        isApproved: c.isApproved,
+        isSuspended: user?.isSuspended || false,
+        bankName: c.bankName || 'Kuda Bank',
+        accountNumber: c.accountNumber || '',
+      };
+    });
+  }
+
+  /**
+   * Option B1: Update fleet runner status (suspend, activate, toggle approval)
+   */
+  static async updateCourierStatus(
+    courierId: string,
+    updates: { isApproved?: boolean; status?: 'available' | 'on_delivery' | 'offline'; isSuspended?: boolean }
+  ) {
+    const courier = db.courierProfiles.find((c) => c.id === courierId);
+    if (!courier) {
+      throw new Error(`Courier profile ${courierId} not found`);
+    }
+
+    if (updates.isApproved !== undefined) {
+      courier.isApproved = updates.isApproved;
+    }
+    if (updates.status !== undefined) {
+      courier.status = updates.status;
+    }
+
+    const user = db.users.find((u) => u.id === courier.userId);
+    if (user && updates.isSuspended !== undefined) {
+      user.isSuspended = updates.isSuspended;
+      await db.saveUser(user);
+    }
+
+    await db.saveCourierProfile(courier);
+
+    return {
+      success: true,
+      courierId: courier.id,
+      isApproved: courier.isApproved,
+      status: courier.status,
+      isSuspended: user?.isSuspended || false,
+    };
+  }
+
+  /**
+   * Option B2: List all campus stores & vendors with KYC audit info
+   */
+  static getVendors(campusId?: string) {
+    let vendors = db.vendorProfiles;
+    if (campusId) {
+      vendors = vendors.filter((v) => v.campusId === campusId);
+    }
+
+    return vendors.map((v) => {
+      const user = db.users.find((u) => u.id === v.userId);
+      const campus = db.campuses.find((camp) => camp.id === v.campusId);
+      const products = db.products.filter((p) => p.vendorId === v.id);
+
+      return {
+        id: v.id,
+        userId: v.userId,
+        businessName: v.businessName,
+        description: v.description || '',
+        category: products[0]?.category || 'General Merchant',
+        ownerName: user?.fullName || 'Student Merchant',
+        ownerPhone: user?.phone || '',
+        ownerEmail: user?.email || '',
+        ownerMatric: user?.matricNumber || 'RUN/MERCHANT/KYC',
+        campusId: v.campusId,
+        campusName: campus?.name || '',
+        bankName: v.bankName,
+        accountNumber: v.accountNumber,
+        accountName: v.accountName,
+        paystackSubaccountCode: v.paystackSubaccountCode || 'ACCT_vendor_sub',
+        trustScore: v.trustScore || 98,
+        completedOrdersCount: v.completedOrdersCount || 0,
+        totalProductsCount: products.length,
+        activeProductsCount: products.filter((p) => p.isActive).length,
+        isApproved: v.isApproved,
+        isSuspended: user?.isSuspended || false,
+      };
+    });
+  }
+
+  /**
+   * Option B2: Update campus merchant status (verify KYC, suspend store)
+   */
+  static async updateVendorStatus(
+    vendorId: string,
+    updates: { isApproved?: boolean; isSuspended?: boolean }
+  ) {
+    const vendor = db.vendorProfiles.find((v) => v.id === vendorId);
+    if (!vendor) {
+      throw new Error(`Vendor profile ${vendorId} not found`);
+    }
+
+    if (updates.isApproved !== undefined) {
+      vendor.isApproved = updates.isApproved;
+    }
+
+    const user = db.users.find((u) => u.id === vendor.userId);
+    if (user && updates.isSuspended !== undefined) {
+      user.isSuspended = updates.isSuspended;
+      await db.saveUser(user);
+    }
+
+    await db.saveVendorProfile(vendor);
+
+    return {
+      success: true,
+      vendorId: vendor.id,
+      isApproved: vendor.isApproved,
+      isSuspended: user?.isSuspended || false,
+    };
+  }
+
+  /**
+   * Option B3: List products across campus for moderation
+   */
+  static getProducts(campusId?: string, vendorId?: string) {
+    let products = db.products;
+    if (campusId) {
+      products = products.filter((p) => p.campusId === campusId);
+    }
+    if (vendorId) {
+      products = products.filter((p) => p.vendorId === vendorId);
+    }
+
+    return products.map((p) => {
+      const vendor = db.vendorProfiles.find((v) => v.id === p.vendorId);
+      const campus = db.campuses.find((c) => c.id === p.campusId);
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        category: p.category,
+        price: p.price,
+        stockQuantity: p.stockQuantity,
+        isActive: p.isActive,
+        images: p.images || (p.imageUrl ? [p.imageUrl] : []),
+        vendorId: p.vendorId,
+        vendorStoreName: vendor?.businessName || 'Campus Store',
+        campusId: p.campusId,
+        campusName: campus?.name || '',
+        createdAt: p.createdAt,
+      };
+    });
+  }
+
+  /**
+   * Option B3: Moderate product listing (delist prohibited contraband / re-activate)
+   */
+  static async moderateProduct(
+    productId: string,
+    updates: { isActive: boolean; reason?: string }
+  ) {
+    const product = db.products.find((p) => p.id === productId);
+    if (!product) {
+      throw new Error(`Product ${productId} not found`);
+    }
+
+    product.isActive = updates.isActive;
+    await db.saveProduct(product);
+
+    return {
+      success: true,
+      productId: product.id,
+      title: product.title,
+      isActive: product.isActive,
+      reason: updates.reason || (updates.isActive ? 'Approved by admin' : 'Delisted by admin for policy compliance'),
     };
   }
 }

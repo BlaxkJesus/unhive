@@ -2013,6 +2013,169 @@ describe('UniHive™ Core Architecture & Security Test Suite', () => {
       expect(loginRes.body.data.courierProfile.isApproved).toBe(true);
     });
   });
+
+  describe('20. Option B: SwiftDrop Fleet Management, Campus Stores KYC & Product Moderation Suite', () => {
+    let adminToken: string;
+
+    beforeEach(async () => {
+      const totpRes = await request(app).get('/api/v1/auth/demo-totp');
+      const adminRes = await request(app)
+        .post('/api/v1/auth/login')
+        .send({
+          phoneOrEmail: 'admin@run.edu.ng',
+          password: 'unihive2026',
+          role: 'admin',
+          totpCode: totpRes.body.totp,
+        });
+      adminToken = adminRes.body.data.token;
+    });
+
+    it('GET /api/v1/admin/couriers lists all fleet runners with base hostels and WhatsApp deep-links', async () => {
+      const res = await request(app)
+        .get('/api/v1/admin/couriers?campusId=campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+
+      const runner = res.body.data[0];
+      expect(runner.fullName).toBeDefined();
+      expect(runner.phone).toBeDefined();
+      expect(runner.whatsappPhone).toMatch(/^\+234/);
+      expect(runner.whatsappPingLink).toContain('https://wa.me/');
+      expect(runner.baseHostelName).toBeDefined();
+      expect(runner.status).toBeDefined();
+    });
+
+    it('POST /api/v1/admin/couriers/:id/status updates runner active and suspended state', async () => {
+      const listRes = await request(app)
+        .get('/api/v1/admin/couriers')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      const targetCourier = listRes.body.data[0];
+      expect(targetCourier).toBeDefined();
+
+      // Suspend runner
+      const suspendRes = await request(app)
+        .post(`/api/v1/admin/couriers/${targetCourier.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isSuspended: true, status: 'offline' });
+
+      expect(suspendRes.status).toBe(200);
+      expect(suspendRes.body.data.isSuspended).toBe(true);
+      expect(suspendRes.body.data.status).toBe('offline');
+
+      // Re-activate runner
+      const activateRes = await request(app)
+        .post(`/api/v1/admin/couriers/${targetCourier.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isSuspended: false, status: 'available' });
+
+      expect(activateRes.status).toBe(200);
+      expect(activateRes.body.data.isSuspended).toBe(false);
+      expect(activateRes.body.data.status).toBe('available');
+    });
+
+    it('GET /api/v1/admin/vendors lists campus stores with student owner matric and Paystack details', async () => {
+      const res = await request(app)
+        .get('/api/v1/admin/vendors?campusId=campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(Array.isArray(res.body.data)).toBe(true);
+      expect(res.body.data.length).toBeGreaterThan(0);
+
+      const store = res.body.data[0];
+      expect(store.businessName).toBeDefined();
+      expect(store.ownerName).toBeDefined();
+      expect(store.bankName).toBeDefined();
+      expect(store.accountNumber).toBeDefined();
+      expect(store.paystackSubaccountCode).toBeDefined();
+      expect(store.isApproved).toBe(true);
+    });
+
+    it('POST /api/v1/admin/vendors/:id/status toggles merchant verification and store suspension', async () => {
+      const listRes = await request(app)
+        .get('/api/v1/admin/vendors')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      const targetVendor = listRes.body.data[0];
+      expect(targetVendor).toBeDefined();
+
+      // Suspend store
+      const suspendRes = await request(app)
+        .post(`/api/v1/admin/vendors/${targetVendor.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isApproved: false, isSuspended: true });
+
+      expect(suspendRes.status).toBe(200);
+      expect(suspendRes.body.data.isApproved).toBe(false);
+      expect(suspendRes.body.data.isSuspended).toBe(true);
+
+      // Verify and restore store
+      const restoreRes = await request(app)
+        .post(`/api/v1/admin/vendors/${targetVendor.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isApproved: true, isSuspended: false });
+
+      expect(restoreRes.status).toBe(200);
+      expect(restoreRes.body.data.isApproved).toBe(true);
+      expect(restoreRes.body.data.isSuspended).toBe(false);
+    });
+
+    it('GET /api/v1/admin/products and POST /api/v1/admin/products/:id/moderate flag and delist prohibited items', async () => {
+      const vendor = db.vendorProfiles[0];
+      db.products.push({
+        id: 'test-product-mod-1',
+        campusId: 'campus-run-ede',
+        vendorId: vendor.id,
+        title: 'Portable Electric Coil Heater (Prohibited)',
+        description: '1500W High wattage coil heater',
+        category: 'Electronics',
+        condition: 'new',
+        price: 8500,
+        images: ['https://example.com/heater.jpg'],
+        stockQuantity: 4,
+        isActive: true,
+        createdAt: new Date(),
+      });
+
+      const listRes = await request(app)
+        .get('/api/v1/admin/products')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.success).toBe(true);
+      expect(listRes.body.data.length).toBeGreaterThan(0);
+
+      const product = listRes.body.data[0];
+      expect(product.id).toBeDefined();
+      expect(product.title).toBeDefined();
+      expect(product.isActive).toBe(true);
+
+      // Flag & Delist prohibited contraband product
+      const flagRes = await request(app)
+        .post(`/api/v1/admin/products/${product.id}/moderate`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isActive: false, reason: 'High-wattage heater prohibited by hostel policy' });
+
+      expect(flagRes.status).toBe(200);
+      expect(flagRes.body.data.isActive).toBe(false);
+      expect(flagRes.body.data.reason).toContain('High-wattage heater');
+
+      // Re-activate product
+      const relistRes = await request(app)
+        .post(`/api/v1/admin/products/${product.id}/moderate`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isActive: true });
+
+      expect(relistRes.status).toBe(200);
+      expect(relistRes.body.data.isActive).toBe(true);
+    });
+  });
 });
 
 
