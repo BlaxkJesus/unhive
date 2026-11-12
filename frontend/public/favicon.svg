@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="100%" height="100%">
+  <defs>
+    <linearGradient id="unihive-fav-bg" x1="0" y1="0" x2="140" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B1E54"/>
+      <stop offset="100%" stop-color="#18042B"/>
+    </linearGradient>
+  </defs>
+  <!-- Sleek rounded brand squircle container ensuring high visibility in both light & dark browser tabs -->
+  <rect width="140" height="140" rx="32" fill="url(#unihive-fav-bg)"/>
+  <rect width="136" height="136" x="2" y="2" rx="30" fill="none" stroke="rgba(245, 158, 11, 0.45)" stroke-width="2"/>
+  <!-- UniHive UH Interlocking Monogram -->
+  <g transform="translate(3, 22)">
+    <path d="M 16 16 L 30 16 L 30 56 C 30 63 35 68 45 68 C 55 68 60 63 60 56 L 60 16 L 74 16 L 74 44 L 104 44 L 104 16 L 118 16 L 118 80 L 104 80 L 104 56 L 74 56 C 74 70 61 82 45 82 C 29 82 16 70 16 56 Z" fill="#FFFFFF"/>
+  </g>
+</svg>

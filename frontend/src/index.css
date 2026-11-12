@@ -1,0 +1,874 @@
+:root {
+  /* Clean Institutional Light Mode (Default User Facing) */
+  --bg-primary: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F1F5F9;
+  --bg-subtle: #F1F5F9;
+  --bg-accent-soft: #EFF6FF;
+  --border-color: #E2E8F0;
+  --border-focus: #1E3A8A;
+
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-muted: #64748B;
+
+  /* UniHive Brand Colors */
+  --brand-navy: #0F2B5C;
+  --brand-navy-light: #1E3A8A;
+  --brand-navy-gradient: #0F2B5C;
+  --brand-amber: #D97706;
+  --brand-amber-hover: #B45309;
+  --brand-amber-gradient: #D97706;
+  --brand-gold: #F59E0B;
+
+  /* Status Colors */
+  --status-success: #059669;
+  --status-success-bg: #ECFDF5;
+  --status-warning: #D97706;
+  --status-warning-bg: #FEF3C7;
+  --status-danger: #DC2626;
+  --status-danger-bg: #FEF2F2;
+  --status-info: #2563EB;
+  --status-info-bg: #EFF6FF;
+
+  --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-full: 9999px;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.05);
+  --shadow-glow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+/* Operations High-Contrast Dark Mode (Admin Only) */
+.dark-mode {
+  --bg-primary: #0F172A;
+  --bg-card: #1E293B;
+  --bg-card-hover: #334155;
+  --bg-subtle: #334155;
+  --bg-accent-soft: #1E3A8A;
+  --border-color: #475569;
+  --border-focus: #60A5FA;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+
+  --brand-navy: #1E293B;
+  --brand-navy-light: #334155;
+  --brand-navy-gradient: #1E293B;
+
+  --status-success-bg: #064E3B;
+  --status-warning-bg: #78350F;
+  --status-danger-bg: #7F1D1D;
+  --status-info-bg: #1E3A8A;
+
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6);
+  --shadow-glow: none;
+  text-shadow: none !important;
+}
+
+.dark-mode * {
+  text-shadow: none !important;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body, #root {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+input[type="text"], input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Base search input styling ensuring icon breathing room across all viewports */
+input.search-input {
+  padding-left: 48px !important;
+  box-sizing: border-box;
+}
+
+input.search-input-compact {
+  padding-left: 36px !important;
+  box-sizing: border-box;
+}
+
+/* App Container and Viewport Switcher */
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.viewport-mobile-frame {
+  max-width: 430px;
+  margin: 20px auto;
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px -15px rgba(15, 43, 92, 0.35), 0 0 0 12px #0F172A;
+  background-color: var(--bg-primary);
+  min-height: 844px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.viewport-desktop-frame {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Quick Demo Role Switcher Bar */
+.demo-bar {
+  background: #0F172A;
+  color: #F8FAFC;
+  padding: 8px 16px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #334155;
+  z-index: 100;
+}
+
+.demo-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #F59E0B;
+}
+
+.demo-roles-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.demo-role-btn {
+  background: #1E293B;
+  color: #E2E8F0;
+  border: 1px solid #475569;
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s;
+}
+
+.demo-role-btn:hover {
+  background: #334155;
+  border-color: #94A3B8;
+}
+
+.demo-role-btn.active {
+  background: #F59E0B;
+  color: #0F172A;
+  font-weight: 700;
+  border-color: #F59E0B;
+}
+
+/* Navbar */
+.navbar {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-color);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.nav-logo-badge {
+  background: var(--brand-navy-gradient);
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(15, 43, 92, 0.2);
+}
+
+.nav-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+}
+
+.nav-title span {
+  color: var(--brand-amber);
+}
+
+.nav-campus-select {
+  background: var(--bg-accent-soft);
+  border: 1px solid #BFDBFE;
+  color: var(--brand-navy);
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Escrow Banner */
+.escrow-banner {
+  background: #EFF6FF;
+  border-left: 4px solid var(--brand-navy);
+  padding: 10px 18px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #0F172A;
+  font-weight: 500;
+}
+
+.dark-mode .escrow-banner {
+  background: #1E293B;
+  color: #F8FAFC;
+  border-left-color: #059669;
+}
+
+/* Card Styling */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-md);
+  transition: all 0.2s ease-in-out;
+}
+
+.card:hover {
+  border-color: var(--border-focus);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--brand-navy-gradient);
+  color: #FFFFFF;
+}
+
+.btn-primary:hover {
+  background: var(--brand-navy-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-amber {
+  background: var(--brand-amber-gradient);
+  color: #0F172A;
+  font-weight: 700;
+}
+
+.btn-amber:hover {
+  background: var(--brand-amber-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.btn-outline:hover {
+  background: var(--bg-card-hover);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-success {
+  background: var(--status-success-bg);
+  color: var(--status-success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge-amber {
+  background: var(--status-warning-bg);
+  color: var(--brand-amber-hover);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-danger {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-info {
+  background: var(--status-info-bg);
+  color: var(--status-info);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* Handshake PIN Box */
+.pin-display-box {
+  background: #0F172A;
+  color: #F59E0B;
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 12px;
+  padding: 16px 24px;
+  border-radius: var(--radius-md);
+  text-align: center;
+  border: 2px dashed #F59E0B;
+  box-shadow: none;
+}
+
+/* Keypad Grid for Courier */
+.keypad-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.keypad-key {
+  height: 60px;
+  font-size: 22px;
+  font-weight: 700;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.keypad-key:active {
+  background: var(--bg-subtle);
+  transform: scale(0.95);
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 16px;
+}
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  max-width: 520px;
+  width: 100%;
+  padding: 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0;
+  z-index: 30;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  gap: 4px;
+}
+
+.mobile-nav-item.active {
+  color: var(--brand-amber);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* =========================================================
+   Modern Mobile & Small Screen Ergonomics (<768px)
+   ========================================================= */
+@media (max-width: 768px) {
+  :root {
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --radius-xl: 22px;
+  }
+
+  /* Relaxed Card Padding & Soft Ambient Depth */
+  .card {
+    padding: 18px;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 16px -2px rgba(15, 43, 92, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+    border: 1px solid rgba(226, 232, 240, 0.85);
+  }
+
+  /* Confident, Legible Typography on Mobile */
+  h1 {
+    font-size: 22px !important;
+    line-height: 1.32 !important;
+    letter-spacing: -0.3px !important;
+  }
+
+  h2 {
+    font-size: 19px !important;
+    line-height: 1.35 !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  h3 {
+    font-size: 16px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* Tactile, Accessible Form Controls (No iOS Safari auto-zoom) */
+  input:not(.search-input):not(.search-input-compact), select, textarea {
+    font-size: 14px !important;
+    padding: 12px 14px;
+    border-radius: 12px !important;
+    min-height: 44px;
+  }
+
+  /* Specific search inputs with left icons - prevent text from overlapping icon */
+  input.search-input {
+    font-size: 14px !important;
+    min-height: 44px;
+    padding-left: 48px !important;
+    box-sizing: border-box;
+  }
+
+  input.search-input-compact {
+    min-height: 36px;
+    padding-left: 36px !important;
+    box-sizing: border-box;
+  }
+
+  /* Modern Badges with Breathing Room */
+  .badge {
+    padding: 4px 11px !important;
+    font-size: 11px !important;
+    letter-spacing: 0.3px !important;
+  }
+
+  /* Spacious Button Tap Targets */
+  .btn {
+    min-height: 44px;
+    padding: 11px 20px !important;
+    font-size: 13.5px !important;
+    border-radius: 12px !important;
+  }
+
+  .btn-sm {
+    min-height: 36px;
+    padding: 7px 14px !important;
+    font-size: 12px !important;
+    border-radius: 10px !important;
+  }
+
+  /* Responsive Handshake PIN Box */
+  .pin-display-box {
+    font-size: 26px !important;
+    letter-spacing: 8px !important;
+    padding: 12px 18px !important;
+  }
+
+  /* Modal Content Sheet on Mobile */
+  .modal-content {
+    padding: 22px 18px !important;
+    border-radius: 24px !important;
+  }
+
+  /* Clean vendor mobile ergonomics: compact email alert pill with clear badge */
+  .vendor-email-alerts-btn {
+    display: inline-flex !important;
+    padding: 7px 10px !important;
+    font-size: 11px !important;
+    gap: 5px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .btn {
+    font-size: 13.5px !important;
+  }
+}
+
+/* ==========================================================================
+   Motion & Directional Page Transitions System
+   Grounded in Modern Web Guidance (motion & directional-navigation-transitions)
+   ========================================================================== */
+
+/* 1. Native View Transitions API (Directional & Shared Group) */
+::view-transition-group(root) {
+  animation-duration: 0.22s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Forward Page Transition: Next page slides in smoothly from right */
+html:active-view-transition-type(forward)::view-transition-old(root) {
+  animation: 0.18s cubic-bezier(0.16, 1, 0.3, 1) both v-slide-to-left;
+}
+html:active-view-transition-type(forward)::view-transition-new(root) {
+  animation: 0.22s cubic-bezier(0.16, 1, 0.3, 1) both v-slide-from-right;
+}
+
+/* Backward Page Transition: Returning page slides in smoothly from left */
+html:active-view-transition-type(backward)::view-transition-old(root) {
+  animation: 0.18s cubic-bezier(0.16, 1, 0.3, 1) both v-slide-to-right;
+}
+html:active-view-transition-type(backward)::view-transition-new(root) {
+  animation: 0.22s cubic-bezier(0.16, 1, 0.3, 1) both v-slide-from-left;
+}
+
+/* Standard crossfade when no directional type is specified */
+::view-transition-old(root) {
+  animation: 0.15s ease-out both v-fade-out;
+}
+::view-transition-new(root) {
+  animation: 0.2s cubic-bezier(0.16, 1, 0.3, 1) both v-fade-in;
+}
+
+@keyframes v-slide-from-right {
+  from {
+    opacity: 0.8;
+    transform: translate3d(24px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes v-slide-to-left {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0);
+  }
+}
+
+@keyframes v-slide-from-left {
+  from {
+    opacity: 0.8;
+    transform: translate3d(-24px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes v-slide-to-right {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0);
+  }
+}
+
+@keyframes v-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes v-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* 2. React Page Container Transitions (Fallback & Complementary Hardware-Accelerated Animations) */
+.page-container {
+  width: 100%;
+  min-height: 100%;
+  will-change: transform, opacity;
+}
+
+.page-transition-forward {
+  animation: pageSlideInForward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.page-transition-backward {
+  animation: pageSlideInBackward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.page-transition-fade {
+  animation: pageFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes pageSlideInForward {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pageSlideInBackward {
+  from {
+    opacity: 0;
+    transform: translate3d(-16px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 3. Scroll Elevation & Sticky Motion */
+.header-transition {
+  transition: box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease,
+              background-color 0.22s ease;
+}
+
+.header-scrolled {
+  box-shadow: 0 4px 18px -2px rgba(15, 43, 92, 0.08) !important;
+  border-bottom-color: #CBD5E1 !important;
+}
+
+/* 4. Smooth Card Scroll Stagger & Interactive Lift */
+.card-stagger-item {
+  animation: cardStaggerIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+
+@keyframes cardStaggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-interactive {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.18s ease,
+              border-color 0.18s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -3px rgba(15, 43, 92, 0.1);
+}
+
+.card-interactive:active {
+  transform: scale(0.985);
+}
+
+/* 5. Micro-Animations for Navigation & Interactive Elements */
+.mobile-nav-item {
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), color 0.15s ease;
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.92);
+}
+
+.nav-icon-pop {
+  animation: tabIconPop 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tabIconPop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* 6. Accessibility & Reduced Motion Handling */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  ::view-transition-group(root),
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+  }
+  .page-transition-forward,
+  .page-transition-backward,
+  .page-transition-fade,
+  .card-stagger-item,
+  .nav-icon-pop {
+    animation: none !important;
+  }
+  .card-interactive:hover {
+    transform: none !important;
+  }
+}
+

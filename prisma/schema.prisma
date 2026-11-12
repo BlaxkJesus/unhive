@@ -1,0 +1,233 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Campus {
+  id              String           @id @default(uuid())
+  slug            String           @unique
+  name            String
+  shortName       String           @map("short_name")
+  city            String
+  state           String
+  status          String           @default("active")
+  currency        String           @default("NGN")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  hostels         Hostel[]
+  users           User[]
+  vendorProfiles  VendorProfile[]
+  courierProfiles CourierProfile[]
+  products        Product[]
+  orders          Order[]
+
+  @@map("campuses")
+}
+
+model Hostel {
+  id               String           @id @default(uuid())
+  campusId         String           @map("campus_id")
+  name             String
+  gender           String
+  porterLodgeName  String           @map("porter_lodge_name")
+  porterPhone      String?          @map("porter_phone")
+  isActive         Boolean          @default(true) @map("is_active")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  campus           Campus           @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  residents        User[]
+  couriersBased    CourierProfile[]
+  ordersDropoff    Order[]
+
+  @@map("hostels")
+}
+
+model User {
+  id                 String              @id @default(uuid())
+  campusId           String              @map("campus_id")
+  fullName           String              @map("full_name")
+  email              String?             @unique
+  phone              String              @unique
+  matricNumber       String?             @map("matric_number")
+  hostelId           String?             @map("hostel_id")
+  roomNumber         String?             @map("room_number")
+  passwordHash       String              @map("password_hash")
+  roles              String              @default("[\"buyer\"]")
+  isPhoneVerified    Boolean             @default(false) @map("is_phone_verified")
+  isSuspended        Boolean             @default(false) @map("is_suspended")
+  twoFactorSecret    String?             @map("two_factor_secret")
+  twoFactorEnabled   Boolean             @default(false) @map("two_factor_enabled")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  campus             Campus              @relation(fields: [campusId], references: [id])
+  hostel             Hostel?             @relation(fields: [hostelId], references: [id])
+  vendorProfile      VendorProfile?
+  courierProfile     CourierProfile?
+  ordersBought       Order[]             @relation("BuyerOrders")
+  payoutTransactions PayoutTransaction[]
+  disputesRaised     OrderDispute[]      @relation("UserDisputesRaised")
+  disputesAdmin      OrderDispute[]      @relation("AdminDisputesReviewed")
+
+  @@map("users")
+}
+
+model VendorProfile {
+  id                     String    @id @default(uuid())
+  userId                 String    @unique @map("user_id")
+  campusId               String    @map("campus_id")
+  businessName           String    @map("business_name")
+  description            String?
+  logoUrl                String?   @map("logo_url")
+  bankName               String    @map("bank_name")
+  accountNumber          String    @map("account_number")
+  accountName            String    @map("account_name")
+  paystackSubaccountCode String?   @map("paystack_subaccount_code")
+  trustScore             Float     @default(5.00) @map("trust_score")
+  completedOrdersCount   Int       @default(0) @map("completed_orders_count")
+  isApproved             Boolean   @default(false) @map("is_approved")
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus                 Campus    @relation(fields: [campusId], references: [id])
+  products               Product[]
+  ordersReceived         Order[]
+
+  @@map("vendor_profiles")
+}
+
+model CourierProfile {
+  id                    String   @id @default(uuid())
+  userId                String   @unique @map("user_id")
+  campusId              String   @map("campus_id")
+  matricNumber          String   @map("matric_number")
+  studentIdUrl          String   @map("student_id_url")
+  baseHostelId          String   @map("base_hostel_id")
+  status                String   @default("offline")
+  bankName              String   @map("bank_name")
+  accountNumber         String   @map("account_number")
+  accountName           String   @map("account_name")
+  paystackRecipientCode String?  @map("paystack_recipient_code")
+  totalTripsCompleted   Int      @default(0) @map("total_trips_completed")
+  rating                Float    @default(5.00)
+  isApproved            Boolean  @default(false) @map("is_approved")
+  currentHostelLocation String?  @map("current_hostel_location")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus                Campus   @relation(fields: [campusId], references: [id])
+  baseHostel            Hostel   @relation(fields: [baseHostelId], references: [id])
+  deliveriesAssigned    Order[]
+
+  @@map("courier_profiles")
+}
+
+model Product {
+  id             String        @id @default(uuid())
+  campusId       String        @map("campus_id")
+  vendorId       String        @map("vendor_id")
+  title          String
+  description    String
+  category       String
+  condition      String
+  price          Float
+  compareAtPrice Float?        @map("compare_at_price")
+  images         String        @default("[]")
+  stockQuantity  Int           @default(1) @map("stock_quantity")
+  isActive       Boolean       @default(true) @map("is_active")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  campus         Campus        @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  vendor         VendorProfile @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+model Order {
+  id                  String              @id @default(uuid())
+  orderNumber         String              @unique @map("order_number")
+  campusId            String              @map("campus_id")
+  buyerId             String              @map("buyer_id")
+  vendorId            String              @map("vendor_id")
+  courierId           String?             @map("courier_id")
+  status              String              @default("pending_payment")
+  deliveryMethod      String              @default("courier_runner") @map("delivery_method")
+  dropoffHostelId     String              @map("dropoff_hostel_id")
+  dropoffRoom         String              @map("dropoff_room")
+  contactPhone        String              @map("contact_phone")
+  specialInstructions String?             @map("special_instructions")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  campus              Campus              @relation(fields: [campusId], references: [id])
+  buyer               User                @relation("BuyerOrders", fields: [buyerId], references: [id])
+  vendor              VendorProfile       @relation(fields: [vendorId], references: [id])
+  courier             CourierProfile?     @relation(fields: [courierId], references: [id])
+  dropoffHostel       Hostel              @relation(fields: [dropoffHostelId], references: [id])
+  escrow              OrderEscrow?
+  payoutTransactions  PayoutTransaction[]
+  dispute             OrderDispute?
+
+  @@map("orders")
+}
+
+model OrderEscrow {
+  id                    String    @id @default(uuid())
+  orderId               String    @unique @map("order_id")
+  itemSubtotal          Float     @map("item_subtotal")
+  platformTechFee       Float     @default(100.00) @map("platform_tech_fee")
+  courierDeliveryFee    Float     @default(250.00) @map("courier_delivery_fee")
+  totalAmount           Float     @map("total_amount")
+  paystackReference     String?   @unique @map("paystack_reference")
+  paystackPaymentStatus String    @default("unpaid") @map("paystack_payment_status")
+  handshakePinHash      String    @map("handshake_pin_hash")
+  plainPinForDev        String?   @map("plain_pin_for_dev")
+  pinAttemptsCount      Int       @default(0) @map("pin_attempts_count")
+  pinVerifiedAt         DateTime? @map("pin_verified_at")
+  settledAt             DateTime? @map("settled_at")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  order                 Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_escrow")
+}
+
+model PayoutTransaction {
+  id                   String   @id @default(uuid())
+  orderId              String   @map("order_id")
+  recipientType        String   @map("recipient_type")
+  recipientUserId      String?  @map("recipient_user_id")
+  amount               Float
+  paystackTransferCode String?  @map("paystack_transfer_code")
+  status               String   @default("success")
+  transferredAt        DateTime @default(now()) @map("transferred_at")
+
+  order                Order    @relation(fields: [orderId], references: [id])
+  recipientUser        User?    @relation(fields: [recipientUserId], references: [id])
+
+  @@map("payout_transactions")
+}
+
+model OrderDispute {
+  id              String    @id @default(uuid())
+  orderId         String    @unique @map("order_id")
+  raisedByUserId  String    @map("raised_by_user_id")
+  reason          String
+  status          String    @default("open")
+  adminId         String?   @map("admin_id")
+  resolutionNotes String?   @map("resolution_notes")
+  resolvedAt      DateTime? @map("resolved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  order           Order     @relation(fields: [orderId], references: [id])
+  raisedBy        User      @relation("UserDisputesRaised", fields: [raisedByUserId], references: [id])
+  admin           User?     @relation("AdminDisputesReviewed", fields: [adminId], references: [id])
+
+  @@map("order_disputes")
+}
