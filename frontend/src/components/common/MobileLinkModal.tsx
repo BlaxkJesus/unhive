@@ -22,13 +22,20 @@ export const MobileLinkModal: React.FC<MobileLinkModalProps> = ({
   onToggleMobilePreview,
 }) => {
   const [copied, setCopied] = useState(false);
+  const [linkMode, setLinkMode] = useState<'public' | 'wifi'>('public');
 
   if (!isOpen) return null;
 
+  // The active public tunnel URL (works across any cellular data / network)
+  const publicTunnelUrl = 'https://aa0894d9764d93.lhr.life';
+
   // The active LAN IP address of this machine on the local Wi-Fi network
-  const lanIp = '10.119.130.186';
+  const lanIp = '10.86.67.215';
   const port = '3000';
-  const mobileUrl = `http://${lanIp}:${port}`;
+  const localWifiUrl = `http://${lanIp}:${port}`;
+
+  const mobileUrl = linkMode === 'public' ? publicTunnelUrl : localWifiUrl;
+
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(
     mobileUrl
   )}&color=0F2B5C&bgcolor=FFFFFF&margin=8`;
@@ -144,7 +151,53 @@ export const MobileLinkModal: React.FC<MobileLinkModalProps> = ({
         </div>
 
         {/* Body */}
-        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Mode Switcher */}
+          <div
+            style={{
+              display: 'flex',
+              background: '#F1F5F9',
+              padding: '4px',
+              borderRadius: '12px',
+              gap: '4px',
+            }}
+          >
+            <button
+              onClick={() => setLinkMode('public')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: linkMode === 'public' ? '#0F2B5C' : 'transparent',
+                color: linkMode === 'public' ? '#FFFFFF' : '#475569',
+                fontSize: '11.5px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🌐 Public Cloud Link (Any Phone)
+            </button>
+            <button
+              onClick={() => setLinkMode('wifi')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: 'none',
+                background: linkMode === 'wifi' ? '#0F2B5C' : 'transparent',
+                color: linkMode === 'wifi' ? '#FFFFFF' : '#475569',
+                fontSize: '11.5px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              📶 Same Wi-Fi (LAN)
+            </button>
+          </div>
+
           {/* QR Code Container */}
           <div
             style={{
@@ -263,8 +316,15 @@ export const MobileLinkModal: React.FC<MobileLinkModalProps> = ({
               <span>Easy 3-Step Setup:</span>
             </div>
             <ol style={{ margin: 0, paddingLeft: '18px' }}>
-              <li>Ensure your phone is connected to the same Wi-Fi router.</li>
-              <li>Scan the QR code or visit <strong style={{ color: '#0F2B5C' }}>{mobileUrl}</strong> in Safari or Chrome.</li>
+              <li>
+                {linkMode === 'public'
+                  ? 'Works anywhere on cellular data (MTN, Airtel, etc.) or any Wi-Fi.'
+                  : 'Ensure your phone is connected to the same Wi-Fi router.'}
+              </li>
+              <li>
+                Scan the QR code or visit{' '}
+                <strong style={{ color: '#0F2B5C', wordBreak: 'break-all' }}>{mobileUrl}</strong> in Safari or Chrome.
+              </li>
               <li>Tap any role persona (Buyer, Vendor, Courier) for instant 1-tap testing!</li>
             </ol>
           </div>
