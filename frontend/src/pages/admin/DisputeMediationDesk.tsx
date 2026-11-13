@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useResponsive } from '../../hooks/useResponsive';
 import {
   CheckCircle2,
   RotateCcw,
@@ -9,6 +10,7 @@ import {
   Search,
   Eye,
   ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface DisputeMediationDeskProps {
@@ -32,6 +34,8 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
   resolutionMessage,
   onClearMessage,
 }) => {
+  const { isMobile } = useResponsive();
+  const [mobileTab, setMobileTab] = useState<'queue' | 'detail'>('queue');
   const [selectedDisputeId, setSelectedDisputeId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<
     'all' | 'open' | 'refunded' | 'released_to_vendor'
@@ -106,9 +110,13 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '24px',
+        gap: isMobile ? '16px' : '24px',
         color: '#F8FAFC',
         fontFamily: 'var(--font-main, sans-serif)',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflowX: 'hidden',
       }}
     >
       {/* 1. Header & Mediation Metrics Banner */}
@@ -117,7 +125,9 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
           background: 'linear-gradient(180deg, #111C33 0%, #0F172A 100%)',
           border: '1px solid #1E293B',
           borderRadius: '16px',
-          padding: '24px',
+          padding: isMobile ? '16px 14px' : '24px',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <div
@@ -126,15 +136,15 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '16px',
-            marginBottom: '20px',
+            gap: '14px',
+            marginBottom: '16px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
               style={{
-                width: '46px',
-                height: '46px',
+                width: '42px',
+                height: '42px',
                 borderRadius: '12px',
                 background: 'rgba(239, 68, 68, 0.15)',
                 border: '1px solid rgba(239, 68, 68, 0.4)',
@@ -142,13 +152,14 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#EF4444',
+                flexShrink: 0,
               }}
             >
-              <ShieldAlert size={26} />
+              <ShieldAlert size={24} />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 style={{ fontSize: '20px', fontWeight: 800, margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: isMobile ? '17px' : '20px', fontWeight: 800, margin: 0 }}>
                   Zero-Trust Dispute Mediation Desk
                 </h2>
                 <span
@@ -173,8 +184,8 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
                     : 'All Hostels Clear'}
                 </span>
               </div>
-              <p style={{ fontSize: '13px', color: '#94A3B8', margin: '4px 0 0 0' }}>
-                Ground-Floor Porter Lodge physical inspections, PIN lockout arbitration & Paystack 1-click escrow reversals.
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '4px 0 0 0' }}>
+                Ground-Floor Porter Lodge physical inspections, PIN lockout arbitration & Paystack escrow reversals.
               </p>
             </div>
           </div>
@@ -186,10 +197,10 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
               background: '#1E293B',
               border: '1px solid #334155',
               color: '#94A3B8',
-              padding: '8px 16px',
+              padding: '7px 14px',
               borderRadius: '8px',
               cursor: 'pointer',
-              fontSize: '12px',
+              fontSize: '11.5px',
               fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
@@ -204,8 +215,8 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '14px',
+            gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '10px',
           }}
         >
           <div
@@ -351,27 +362,79 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
         </div>
       )}
 
+      {/* Mobile Toggle: Queue vs Case File */}
+      {isMobile && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+          <button
+            onClick={() => setMobileTab('queue')}
+            style={{
+              background: mobileTab === 'queue' ? '#1E293B' : '#0B1120',
+              border: mobileTab === 'queue' ? '1.5px solid #3B82F6' : '1px solid #1E293B',
+              color: mobileTab === 'queue' ? '#FFFFFF' : '#94A3B8',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>📋 Cases Queue ({filteredDisputes.length})</span>
+          </button>
+          <button
+            onClick={() => setMobileTab('detail')}
+            style={{
+              background: mobileTab === 'detail' ? '#1E293B' : '#0B1120',
+              border: mobileTab === 'detail' ? '1.5px solid #F59E0B' : '1px solid #1E293B',
+              color: mobileTab === 'detail' ? '#FFFFFF' : '#94A3B8',
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            <span>🔍 Case #{currentDispute?.orderNumber || 'File'}</span>
+          </button>
+        </div>
+      )}
+
       {/* 2. Main Mediation Workspace: Split View */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(320px, 380px) 1fr',
-          gap: '24px',
+          display: isMobile ? 'flex' : 'grid',
+          flexDirection: isMobile ? 'column' : undefined,
+          gridTemplateColumns: isMobile ? undefined : 'minmax(320px, 380px) 1fr',
+          gap: isMobile ? '16px' : '24px',
           alignItems: 'start',
+          width: '100%',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
         }}
       >
         {/* LEFT COLUMN: Queue & Filters */}
-        <div
-          style={{
-            background: '#0F172A',
-            border: '1px solid #1E293B',
-            borderRadius: '16px',
-            padding: '18px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px',
-          }}
-        >
+        {(!isMobile || mobileTab === 'queue') && (
+          <div
+            style={{
+              background: '#0F172A',
+              border: '1px solid #1E293B',
+              borderRadius: '16px',
+              padding: isMobile ? '14px' : '18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              width: '100%',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
           {/* Search Input */}
           <div style={{ position: 'relative' }}>
             <Search
@@ -448,7 +511,7 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
               display: 'flex',
               flexDirection: 'column',
               gap: '10px',
-              maxHeight: '700px',
+              maxHeight: isMobile ? '500px' : '700px',
               overflowY: 'auto',
             }}
           >
@@ -477,7 +540,10 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
                 return (
                   <div
                     key={d.id}
-                    onClick={() => setSelectedDisputeId(d.id)}
+                    onClick={() => {
+                      setSelectedDisputeId(d.id);
+                      if (isMobile) setMobileTab('detail');
+                    }}
                     style={{
                       background: isSelected ? '#162035' : '#0B1120',
                       border: isSelected
@@ -606,21 +672,50 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
             )}
           </div>
         </div>
+        )}
 
         {/* RIGHT COLUMN: Deep Case File Inspector */}
-        {currentDispute ? (
-          <div
-            style={{
-              background: '#0F172A',
-              border: '1px solid #1E293B',
-              borderRadius: '16px',
-              padding: '24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '22px',
-            }}
-          >
-            {/* Case Header */}
+        {(!isMobile || mobileTab === 'detail') && (
+          currentDispute ? (
+            <div
+              style={{
+                background: '#0F172A',
+                border: '1px solid #1E293B',
+                borderRadius: '16px',
+                padding: isMobile ? '16px' : '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '20px',
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('queue')}
+                  style={{
+                    background: '#1E293B',
+                    border: '1px solid #334155',
+                    color: '#93C5FD',
+                    padding: '7px 12px',
+                    borderRadius: '8px',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  <ArrowLeft size={13} />
+                  <span>← Back to Cases Queue ({filteredDisputes.length})</span>
+                </button>
+              )}
+
+              {/* Case Header */}
             <div
               style={{
                 display: 'flex',
@@ -740,7 +835,7 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
                 borderRadius: '12px',
                 padding: '14px 18px',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
                 gap: '12px',
               }}
             >
@@ -826,7 +921,7 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
                 gap: '14px',
               }}
             >
@@ -1444,8 +1539,8 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '14px',
+                      gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+                      gap: '12px',
                     }}
                   >
                     <button
@@ -1571,7 +1666,7 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
               Select a dispute from the queue on the left to inspect physical evidence and mediate.
             </div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Lightbox Modal for Full Evidence Inspection */}

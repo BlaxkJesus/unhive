@@ -446,8 +446,8 @@ export const AdminConsole: React.FC = () => {
             border: '1px solid #1E293B',
             borderRadius: '18px',
             maxWidth: '460px',
-            width: '100%',
-            padding: '24px',
+            width: '94%',
+            padding: 'clamp(16px, 4vw, 24px)',
             boxSizing: 'border-box',
             color: '#F8FAFC',
             position: 'relative',
@@ -813,23 +813,25 @@ export const AdminConsole: React.FC = () => {
           background: '#0B1120',
           minHeight: '100vh',
           color: '#F8FAFC',
-          padding: '16px 16px 104px 16px',
+          padding: '16px 12px 104px 12px',
           display: 'flex',
           flexDirection: 'column',
           gap: '14px',
+          width: '100%',
           maxWidth: '480px',
           margin: '0 auto',
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
           boxSizing: 'border-box',
+          overflowX: 'hidden',
         }}
       >
         {/* Mobile Header Bar (Screen 10) */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', width: '100%', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
             <div
               style={{
-                width: '38px',
-                height: '38px',
+                width: '36px',
+                height: '36px',
                 borderRadius: '10px',
                 background: '#1E293B',
                 display: 'flex',
@@ -839,35 +841,35 @@ export const AdminConsole: React.FC = () => {
                 flexShrink: 0,
               }}
             >
-              <UniHiveLogo size={26} variant="white" />
+              <UniHiveLogo size={24} variant="white" />
             </div>
-            <div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.1 }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.1, whiteSpace: 'nowrap' }}>
                 Uni <span style={{ color: '#FBBF24' }}>Hive</span> Admin
               </div>
-              <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '2px' }}>
+              <div style={{ fontSize: '10.5px', color: '#94A3B8', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 RUN Campus Operations
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
             <div
               style={{
                 background: 'rgba(16, 185, 129, 0.15)',
                 border: '1px solid rgba(16, 185, 129, 0.35)',
                 color: '#10B981',
-                fontSize: '11px',
+                fontSize: '10px',
                 fontWeight: 800,
-                padding: '4px 10px',
+                padding: '3px 8px',
                 borderRadius: '20px',
                 letterSpacing: '0.3px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
+                gap: '4px',
               }}
             >
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981' }}></span>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#10B981' }}></span>
               <span>Live Ops</span>
             </div>
 
@@ -877,18 +879,18 @@ export const AdminConsole: React.FC = () => {
                 background: 'rgba(239, 68, 68, 0.15)',
                 border: '1px solid rgba(239, 68, 68, 0.4)',
                 color: '#FCA5A5',
-                padding: '5px 10px',
+                padding: '4px 8px',
                 borderRadius: '8px',
-                fontSize: '11px',
+                fontSize: '10.5px',
                 fontWeight: 800,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '4px',
+                gap: '3px',
               }}
               title="Sign out from Admin Console"
             >
-              <LogOut size={12} />
+              <LogOut size={11} />
               <span>Sign Out</span>
             </button>
           </div>
@@ -1036,6 +1038,122 @@ export const AdminConsole: React.FC = () => {
             actionLoadingId={actionLoadingId}
             campusName={currentCampus?.name}
           />
+        ) : activeAdminTab === 'stream' ? (
+          /* Dedicated Real-Time Dispatch Stream (Mobile) */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ background: '#11192C', border: '1px solid #1E293B', borderRadius: '16px', padding: '16px', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF' }}>Dispatch Stream</span>
+                <span style={{ fontSize: '10.5px', color: '#60A5FA', fontWeight: 800 }}>{stream.length} Live in Transit</span>
+              </div>
+              <p style={{ fontSize: '11.5px', color: '#94A3B8', margin: '0 0 14px 0', lineHeight: 1.4 }}>
+                Monitoring porter lodge arrivals & Zero-Room-Entry custody across all RUN campus hostels.
+              </p>
+              {stream.length === 0 ? (
+                <div style={{ padding: '36px 12px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+                  No campus dispatches currently in transit.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {stream.map((item, idx) => (
+                    <div
+                      key={item.orderId || item.id || idx}
+                      style={{
+                        background: '#162035',
+                        border: '1px solid #23314E',
+                        borderRadius: '12px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <strong style={{ color: '#F59E0B', fontSize: '13px' }}>#{item.orderNumber}</strong>
+                        <span
+                          style={{
+                            background:
+                              item.status === 'at_porter_desk'
+                                ? 'rgba(245, 158, 11, 0.15)'
+                                : 'rgba(59, 130, 246, 0.15)',
+                            color: item.status === 'at_porter_desk' ? '#FCD34D' : '#93C5FD',
+                            fontSize: '9.5px',
+                            fontWeight: 800,
+                            padding: '2px 7px',
+                            borderRadius: '5px',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          {item.status === 'at_porter_desk' ? 'At Porter Desk' : item.status?.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#CBD5E1' }}>
+                        <span>{item.vendor || 'Campus Vendor'}</span> ➔ <span>{item.destination || item.dropoffHostel || 'Hostel'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94A3B8', borderTop: '1px solid #23314E', paddingTop: '6px' }}>
+                        <span>Runner: <strong style={{ color: '#F1F5F9' }}>{item.courier || 'David Adeleke'}</strong></span>
+                        <strong style={{ color: '#10B981' }}>₦{(item.totalAmount || item.escrowAmount || 0).toLocaleString()}</strong>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeAdminTab === 'payouts' ? (
+          /* Dedicated Atomic Settlement & Payouts (Mobile) */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ background: '#11192C', border: '1px solid #1E293B', borderRadius: '16px', padding: '16px', width: '100%', boxSizing: 'border-box' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#FFFFFF' }}>Atomic Payout Ledger</span>
+                <span style={{ fontSize: '10.5px', color: '#10B981', fontWeight: 800 }}>Paystack Instant</span>
+              </div>
+              <p style={{ fontSize: '11.5px', color: '#94A3B8', margin: '0 0 14px 0', lineHeight: 1.4 }}>
+                Real-time subaccount disbursements executed upon 4-digit Handshake PIN verification.
+              </p>
+              {payouts.length === 0 ? (
+                <div style={{ padding: '36px 12px', textAlign: 'center', color: '#64748B', fontSize: '12px' }}>
+                  No settlements executed yet in this session. Complete a courier drop with PIN to view.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {payouts.map((p, idx) => (
+                    <div
+                      key={p.id || idx}
+                      style={{
+                        background: '#162035',
+                        border: '1px solid #23314E',
+                        borderRadius: '12px',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        width: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 800, color: '#F59E0B', fontSize: '12.5px' }}>#{p.orderNumber || p.orderId}</span>
+                        <span style={{ fontWeight: 900, color: '#10B981', fontSize: '13px' }}>+₦{Number(p.amount).toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#CBD5E1' }}>
+                        <span>{p.recipientName}</span>
+                        <span style={{ color: p.recipientType === 'vendor' ? '#93C5FD' : '#6EE7B7', fontWeight: 700, textTransform: 'uppercase', fontSize: '10px' }}>
+                          {p.recipientType}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#64748B', borderTop: '1px solid #23314E', paddingTop: '6px', fontFamily: 'monospace' }}>
+                        <span>{p.paystackTransferCode || 'TRF_payout'}</span>
+                        <span style={{ color: '#10B981', fontWeight: 700 }}>● {p.status || 'SUCCESS'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <>
 
@@ -1045,6 +1163,8 @@ export const AdminConsole: React.FC = () => {
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '10px',
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
           {/* Card 1: ESCROW VAULT */}
@@ -1053,16 +1173,18 @@ export const AdminConsole: React.FC = () => {
               background: '#11192C',
               border: '1px solid #1E293B',
               borderRadius: '16px',
-              padding: '14px',
+              padding: '12px',
+              minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             <div style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.5px' }}>
               ESCROW VAULT
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0' }}>
+            <div style={{ fontSize: '17px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0', wordBreak: 'break-word' }}>
               ₦{stats.kpis.escrowVaultBalance.toLocaleString()}
             </div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#C084FC' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#C084FC', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {stats.recentOrdersCount || 28} Orders Locked
             </div>
           </div>
@@ -1073,16 +1195,18 @@ export const AdminConsole: React.FC = () => {
               background: '#11192C',
               border: '1px solid #1E293B',
               borderRadius: '16px',
-              padding: '14px',
+              padding: '12px',
+              minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             <div style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.5px' }}>
               PLATFORM REV
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0' }}>
+            <div style={{ fontSize: '17px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0', wordBreak: 'break-word' }}>
               ₦{stats.kpis.platformRevenue.toLocaleString()}
             </div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#FACC15' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#FACC15', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               1,842 Orders (₦100)
             </div>
           </div>
@@ -1093,16 +1217,18 @@ export const AdminConsole: React.FC = () => {
               background: '#11192C',
               border: '1px solid #1E293B',
               borderRadius: '16px',
-              padding: '14px',
+              padding: '12px',
+              minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             <div style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.5px' }}>
               LOGISTICS FLEET
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0' }}>
+            <div style={{ fontSize: '17px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0', wordBreak: 'break-word' }}>
               {stats.kpis.activeCouriersCount || 34} Runners
             </div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#34D399' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#34D399', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Contracted Fleet • 7 Hostels
             </div>
           </div>
@@ -1113,16 +1239,18 @@ export const AdminConsole: React.FC = () => {
               background: '#11192C',
               border: '1px solid #1E293B',
               borderRadius: '16px',
-              padding: '14px',
+              padding: '12px',
+              minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             <div style={{ fontSize: '10px', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.5px' }}>
               ACTIVE STORES
             </div>
-            <div style={{ fontSize: '18px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0' }}>
+            <div style={{ fontSize: '17px', fontWeight: 900, color: '#FFFFFF', margin: '4px 0 2px 0', wordBreak: 'break-word' }}>
               {stats.kpis.verifiedVendorsCount} Stores
             </div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#38BDF8' }}>
+            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#38BDF8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               482 Verified Items
             </div>
           </div>
@@ -1168,7 +1296,7 @@ export const AdminConsole: React.FC = () => {
               'Buyer at Joshua Hall desk refused delivery: "Box has size 41 instead of size 44 advertised."'}
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <button
               onClick={() => handleResolveDispute(priorityDispute.id || 'dispute-demo-1', 'refund_buyer')}
               disabled={loading}
@@ -1176,15 +1304,16 @@ export const AdminConsole: React.FC = () => {
                 background: '#E11D48',
                 border: 'none',
                 color: '#FFFFFF',
-                padding: '10px 12px',
+                padding: '9px 8px',
                 borderRadius: '10px',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 800,
                 cursor: 'pointer',
                 textAlign: 'center',
+                minWidth: 0,
               }}
             >
-              {loading ? 'Processing...' : 'Refund Buyer 100%'}
+              {loading ? 'Processing...' : 'Refund 100%'}
             </button>
 
             <button
@@ -1194,12 +1323,13 @@ export const AdminConsole: React.FC = () => {
                 background: '#1E293B',
                 border: '1px solid #334155',
                 color: '#F8FAFC',
-                padding: '10px 12px',
+                padding: '9px 8px',
                 borderRadius: '10px',
-                fontSize: '12px',
+                fontSize: '11px',
                 fontWeight: 800,
                 cursor: 'pointer',
                 textAlign: 'center',
+                minWidth: 0,
               }}
             >
               {loading ? 'Processing...' : 'Release to Vendor'}
@@ -1214,6 +1344,8 @@ export const AdminConsole: React.FC = () => {
             border: '1px solid #1E293B',
             borderRadius: '16px',
             padding: '16px',
+            width: '100%',
+            boxSizing: 'border-box',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
@@ -1425,6 +1557,10 @@ export const AdminConsole: React.FC = () => {
         minHeight: '100vh',
         color: '#F8FAFC',
         padding: '24px clamp(16px, 3vw, 32px) 96px clamp(16px, 3vw, 32px)',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        overflowX: 'hidden',
       }}
     >
       {/* Top Header Bar */}

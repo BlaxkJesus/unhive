@@ -89,19 +89,21 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', maxWidth: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
       {/* View Header with Search & Controls */}
       <div
         style={{
           background: '#11192C',
           border: '1px solid #1E293B',
           borderRadius: '16px',
-          padding: '16px 20px',
+          padding: '14px 16px',
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '16px',
+          gap: '14px',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -200,6 +202,8 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: '12px',
+          width: '100%',
+          boxSizing: 'border-box',
         }}
       >
         <div
@@ -207,16 +211,17 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
             background: '#11192C',
             border: '1px solid #1E293B',
             borderRadius: '10px',
-            padding: '8px 14px',
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            flex: '1',
-            minWidth: '220px',
-            maxWidth: '420px',
+            flex: '1 1 200px',
+            minWidth: '0',
+            maxWidth: '100%',
+            boxSizing: 'border-box',
           }}
         >
-          <Search size={15} color="#64748B" />
+          <Search size={15} color="#64748B" style={{ flexShrink: 0 }} />
           <input
             type="text"
             value={searchQuery}
@@ -235,12 +240,13 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
               fontSize: '12px',
               outline: 'none',
               width: '100%',
+              minWidth: '0',
             }}
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '11px' }}
+              style={{ background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: '11px', flexShrink: 0 }}
             >
               ✕
             </button>
@@ -248,7 +254,17 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
         </div>
 
         {/* Status Pill Filters */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '8px',
+            overflowX: 'auto',
+            maxWidth: '100%',
+            paddingBottom: '4px',
+            scrollbarWidth: 'none',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {[
             { id: 'all', label: 'All' },
             { id: 'active', label: 'Active' },
@@ -366,7 +382,15 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+                gap: '12px',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
               {filteredCouriers.map((c) => {
                 const isLoading = actionLoadingId === c.id;
                 const isOnline = !c.isSuspended && c.status !== 'offline';
@@ -383,6 +407,9 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
                       flexDirection: 'column',
                       gap: '12px',
                       transition: 'border-color 0.2s',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      minWidth: 0,
                     }}
                   >
                     {/* Top Row: Name & Status */}
@@ -556,7 +583,15 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
               <div style={{ fontSize: '12px', marginTop: '4px' }}>Try adjusting your search criteria</div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '14px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+                gap: '12px',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
               {filteredVendors.map((v) => {
                 const isLoading = actionLoadingId === v.id;
 
@@ -575,11 +610,14 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '12px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      minWidth: 0,
                     }}
                   >
                     {/* Header: Store Name & Category */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
                         <div
                           style={{
                             width: '40px',
@@ -591,12 +629,13 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: '#F59E0B',
+                            flexShrink: 0,
                           }}
                         >
                           <Store size={20} />
                         </div>
-                        <div>
-                          <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF' }}>{v.businessName}</div>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#FFFFFF', wordBreak: 'break-word' }}>{v.businessName}</div>
                           <div style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 700 }}>{v.category}</div>
                         </div>
                       </div>
@@ -613,6 +652,7 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
                           fontWeight: 800,
                           padding: '3px 8px',
                           borderRadius: '6px',
+                          flexShrink: 0,
                         }}
                       >
                         {v.isSuspended ? 'SUSPENDED' : v.isApproved ? 'VERIFIED' : 'PENDING REVIEW'}
@@ -621,21 +661,21 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
 
                     {/* Merchant Student KYC & Banking */}
                     <div style={{ background: '#0B1120', borderRadius: '10px', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748B' }}>Owner / Matric:</span>
-                        <strong style={{ color: '#E2E8F0' }}>{v.ownerName} ({v.ownerMatric})</strong>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ color: '#64748B', flexShrink: 0 }}>Owner / Matric:</span>
+                        <strong style={{ color: '#E2E8F0', wordBreak: 'break-word', textAlign: 'right' }}>{v.ownerName} ({v.ownerMatric})</strong>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748B' }}>Merchant Phone:</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ color: '#64748B', flexShrink: 0 }}>Merchant Phone:</span>
                         <strong style={{ color: '#94A3B8' }}>{v.ownerPhone}</strong>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748B' }}>Bank Settlement:</span>
-                        <span style={{ color: '#38BDF8' }}>{v.bankName} • {v.accountNumber}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ color: '#64748B', flexShrink: 0 }}>Bank Settlement:</span>
+                        <span style={{ color: '#38BDF8', wordBreak: 'break-word', textAlign: 'right' }}>{v.bankName} • {v.accountNumber}</span>
                       </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#64748B' }}>Paystack Subaccount:</span>
-                        <span style={{ color: '#A78BFA', fontFamily: 'monospace' }}>{v.paystackSubaccountCode}</span>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ color: '#64748B', flexShrink: 0 }}>Paystack Subaccount:</span>
+                        <span style={{ color: '#A78BFA', fontFamily: 'monospace', wordBreak: 'break-all', textAlign: 'right' }}>{v.paystackSubaccountCode}</span>
                       </div>
                     </div>
 
@@ -715,7 +755,15 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
               <div style={{ fontSize: '12px', marginTop: '4px' }}>Try adjusting your search criteria</div>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
+                gap: '12px',
+                width: '100%',
+                boxSizing: 'border-box',
+              }}
+            >
               {filteredProducts.map((p) => {
                 const isLoading = actionLoadingId === p.id;
 
@@ -730,6 +778,9 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
                       display: 'flex',
                       flexDirection: 'column',
                       gap: '12px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      minWidth: 0,
                     }}
                   >
                     {/* Top Row: Product Info & Status */}

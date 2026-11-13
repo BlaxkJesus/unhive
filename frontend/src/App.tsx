@@ -214,6 +214,9 @@ const UniHiveApp: React.FC = () => {
           background: '#0B1120',
           color: '#F8FAFC',
           width: '100%',
+          maxWidth: '100vw',
+          overflowX: 'hidden',
+          boxSizing: 'border-box',
         }}
       >
         {showSplash && <SplashScreen minDurationMs={2000} onComplete={() => setShowSplash(false)} />}
