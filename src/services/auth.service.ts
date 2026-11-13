@@ -56,7 +56,7 @@ export class AuthService {
       throw new Error('Invalid phone number/email or account not found');
     }
 
-    if (user.isSuspended) {
+    if (user.isSuspended && params.role !== 'vendor') {
       throw new Error('Account has been suspended by campus authorities');
     }
 
@@ -107,6 +107,10 @@ export class AuthService {
         ? db.vendorProfiles.find((v) => v.userId === user.id)
         : undefined;
 
+    if (vendorProfile && user.isSuspended) {
+      vendorProfile.isSuspended = true;
+    }
+
     const courierProfile =
       params.role === 'courier'
         ? db.courierProfiles.find((c) => c.userId === user.id)
@@ -124,6 +128,7 @@ export class AuthService {
         matricNumber: user.matricNumber,
         hostelId: user.hostelId,
         roomNumber: user.roomNumber,
+        isSuspended: !!user.isSuspended,
       },
       activeRole: params.role,
       vendorProfile,

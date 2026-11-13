@@ -91,6 +91,10 @@ model VendorProfile {
   trustScore             Float     @default(5.00) @map("trust_score")
   completedOrdersCount   Int       @default(0) @map("completed_orders_count")
   isApproved             Boolean   @default(false) @map("is_approved")
+  isSuspended            Boolean   @default(false) @map("is_suspended")
+  appealMessage          String?   @map("appeal_message")
+  appealSubmittedAt      DateTime? @map("appeal_submitted_at")
+  appealStatus           String?   @map("appeal_status")
   createdAt              DateTime  @default(now()) @map("created_at")
 
   user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -219,6 +223,9 @@ model OrderDispute {
   orderId         String    @unique @map("order_id")
   raisedByUserId  String    @map("raised_by_user_id")
   reason          String
+  videoUrl        String?   @map("video_url")
+  buyerStatement  String?   @map("buyer_statement")
+  merchantStatement String? @map("merchant_statement")
   status          String    @default("open")
   adminId         String?   @map("admin_id")
   resolutionNotes String?   @map("resolution_notes")
