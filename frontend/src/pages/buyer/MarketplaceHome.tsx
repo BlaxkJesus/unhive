@@ -590,43 +590,18 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
   }
 
   // -------------------------------------------------------------
-  // DESKTOP VIEW (Matching 11_Screen_11_Desktop_Marketplace_Hub.png)
+  // DESKTOP VIEW (Refined Production-Grade Marketplace Dashboard)
   // -------------------------------------------------------------
   return (
-    <div style={{ padding: '24px 32px', maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Escrow Banner */}
-      <div
-        style={{
-          background: '#FFFFFF',
-          border: '1px solid #E2E8F0',
-          borderRadius: '16px',
-          padding: '14px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          boxShadow: '0 2px 8px rgba(15, 43, 92, 0.04)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <ShieldCheck size={22} color="#F59E0B" />
-          <span style={{ fontSize: '13px', color: '#1E293B' }}>
-            <strong style={{ color: '#0F2B5C' }}>Zero-Trust Escrow Vault Active:</strong> Funds held securely until you inspect your item at the{' '}
-            <u style={{ color: '#1E3A8A' }}>ground-floor hostel porter lodge</u> and release your 4-digit PIN.
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#059669', fontWeight: 800 }}>
-          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
-          <span>34 Student Couriers Online</span>
-        </div>
-      </div>
-
-      {/* Category Pills Slider */}
+    <div style={{ padding: '24px 32px 60px', maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Category Filter Chips */}
       <div
         style={{
           display: 'flex',
-          gap: '10px',
+          gap: '8px',
           overflowX: 'auto',
-          paddingBottom: '4px',
+          paddingBottom: '2px',
+          scrollbarWidth: 'none',
         }}
       >
         {categories.map((cat) => {
@@ -636,20 +611,32 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
               style={{
-                padding: '8px 18px',
-                borderRadius: '9999px',
+                padding: '7px 14px',
+                borderRadius: '8px',
                 border: '1px solid',
                 borderColor: isActive ? '#0F2B5C' : '#E2E8F0',
                 background: isActive ? '#0F2B5C' : '#FFFFFF',
-                color: isActive ? '#FFFFFF' : '#0F172A',
-                fontSize: '13px',
-                fontWeight: 700,
+                color: isActive ? '#FFFFFF' : '#334155',
+                fontSize: '12.5px',
+                fontWeight: 600,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = '#F8FAFC';
+                  e.currentTarget.style.borderColor = '#CBD5E1';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.background = '#FFFFFF';
+                  e.currentTarget.style.borderColor = '#E2E8F0';
+                }
               }}
             >
               <span>{cat.label}</span>
@@ -659,16 +646,15 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
       </div>
 
       {/* Main Content Layout: Filters & Product Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '28px' }}>
-        {/* Left Sticky Proximity Filters (Screen 11 Specification) */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: '24px' }}>
+        {/* Left Sticky Proximity Filters */}
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: '16px',
-              padding: '18px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              borderRadius: '10px',
+              padding: '16px',
             }}
           >
             <h4
@@ -684,10 +670,10 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                 gap: '6px',
               }}
             >
-              <MapPin size={14} color="#F59E0B" />
+              <MapPin size={14} color="#0F2B5C" />
               <span>Hostel Proximity Filter</span>
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
               {hostels.map((h) => (
                 <label
                   key={h.id}
@@ -695,7 +681,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    fontSize: '13px',
+                    fontSize: '12.5px',
                     cursor: 'pointer',
                     color: '#334155',
                     fontWeight: 600,
@@ -705,14 +691,18 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                     type="checkbox"
                     checked={selectedHostels.includes(h.id)}
                     onChange={() => toggleHostel(h.id)}
-                    style={{ accentColor: '#F59E0B' }}
+                    style={{ accentColor: '#0F2B5C' }}
                   />
                   <span>{h.name}</span>
                   <span
                     style={{
                       fontSize: '10px',
-                      color: h.gender === 'female' ? '#EC4899' : '#3B82F6',
-                      fontWeight: 800,
+                      color: h.gender === 'female' ? '#BE185D' : '#1D4ED8',
+                      background: h.gender === 'female' ? '#FDF2F8' : '#EFF6FF',
+                      border: h.gender === 'female' ? '1px solid #FCE7F3' : '1px solid #DBEAFE',
+                      padding: '1px 5px',
+                      borderRadius: '4px',
+                      fontWeight: 700,
                       marginLeft: 'auto',
                     }}
                   >
@@ -727,9 +717,8 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             style={{
               background: '#FFFFFF',
               border: '1px solid #E2E8F0',
-              borderRadius: '16px',
-              padding: '18px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+              borderRadius: '10px',
+              padding: '16px',
             }}
           >
             <h4
@@ -745,20 +734,20 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                 gap: '6px',
               }}
             >
-              <Tag size={14} color="#F59E0B" />
+              <Tag size={14} color="#0F2B5C" />
               <span>Item Condition</span>
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: '#334155', fontWeight: 600 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '12.5px', color: '#334155', fontWeight: 600 }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                <input type="checkbox" defaultChecked style={{ accentColor: '#F59E0B' }} />
+                <input type="checkbox" defaultChecked style={{ accentColor: '#0F2B5C' }} />
                 <span>Brand New (In Box)</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                <input type="checkbox" defaultChecked style={{ accentColor: '#F59E0B' }} />
+                <input type="checkbox" defaultChecked style={{ accentColor: '#0F2B5C' }} />
                 <span>Clean Thrift (Like New)</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                <input type="checkbox" defaultChecked style={{ accentColor: '#F59E0B' }} />
+                <input type="checkbox" defaultChecked style={{ accentColor: '#0F2B5C' }} />
                 <span>Freshly Cooked Food</span>
               </label>
             </div>
@@ -816,7 +805,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
                     className="card-stagger-item card-interactive"
                     style={{
                       background: '#FFFFFF',
-                      borderRadius: '16px',
+                      borderRadius: '10px',
                       border: isOutOfStock ? '1px solid #FECACA' : '1px solid #E2E8F0',
                       overflow: 'hidden',
                       display: 'flex',
