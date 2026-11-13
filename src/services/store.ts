@@ -694,10 +694,6 @@ export class UniHiveStore {
       } else {
         console.log('[Store] SQLite is empty, running in-memory seed baseline');
       }
-
-      if (process.env.NODE_ENV !== 'test') {
-        this.seedDemoDisputesIfEmpty();
-      }
     } catch (err) {
       console.warn('[Store] Database load skipped / using seed fallback:', err);
     }
