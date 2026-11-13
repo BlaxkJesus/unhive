@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { db } from '../services/store.js';
 import { NotificationService } from '../services/notification.service.js';
+import { AdminService } from '../services/admin.service.js';
 import { authenticateJwt } from '../middlewares/auth.middleware.js';
 import { AuthenticatedRequest } from '../types/index.js';
 
@@ -314,6 +315,62 @@ vendorRouter.delete(
       });
     } catch (err: any) {
       res.status(500).json({ error: 'VendorNotificationsClearFailed', message: err.message });
+    }
+  }
+);
+
+// POST /api/v1/vendor/appeal (Suspended vendor submits official appeal)
+vendorRouter.post(
+  '/appeal',
+  authenticateJwt,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { appealMessage } = req.body;
+      if (!appealMessage || typeof appealMessage !== 'string' || appealMessage.trim().length < 5) {
+        res.status(400).json({
+          error: 'BadRequest',
+          message: 'Please provide a detailed appeal statement (minimum 5 characters).',
+        });
+        return;
+      }
+
+      const result = await AdminService.submitVendorAppeal({
+        vendorUserId: req.user!.userId,
+        appealMessage: appealMessage.trim(),
+      });
+
+      res.status(200).json(result);
+    } catch (err: any) {
+      res.status(400).json({ error: 'AppealSubmissionFailed', message: err.message });
+    }
+  }
+);
+
+// GET /api/v1/vendor/profile (Get current vendor profile including suspension/appeal state)
+vendorRouter.get(
+  '/profile',
+  authenticateJwt,
+  (req: AuthenticatedRequest, res: Response): void => {
+    try {
+      const vendor = db.vendorProfiles.find((v) => v.userId === req.user!.userId);
+      const user = db.users.find((u) => u.id === req.user!.userId);
+      if (!vendor) {
+        res.status(404).json({ error: 'VendorNotFound', message: 'Vendor profile not found' });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: {
+          ...vendor,
+          isSuspended: (vendor.isSuspended || user?.isSuspended) || false,
+          appealMessage: vendor.appealMessage || (user as any)?.appealMessage,
+          appealSubmittedAt: vendor.appealSubmittedAt || (user as any)?.appealSubmittedAt,
+          appealStatus: vendor.appealStatus || (user as any)?.appealStatus,
+        },
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'VendorProfileFetchFailed', message: err.message });
     }
   }
 );

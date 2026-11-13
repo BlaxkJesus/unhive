@@ -369,6 +369,8 @@ export class EscrowService {
     buyerUserId: string;
     reason: string;
     issueCategory?: string;
+    videoUrl?: string;
+    buyerStatement?: string;
   }) {
     const order = db.orders.find((o) => o.id === params.orderId);
     if (!order) {
@@ -404,6 +406,9 @@ export class EscrowService {
       orderId: order.id,
       raisedByUserId: params.buyerUserId,
       reason: fullReason,
+      buyerStatement: params.buyerStatement?.trim() || params.reason.trim(),
+      videoUrl: params.videoUrl,
+      evidenceUrls: params.videoUrl ? [params.videoUrl] : [],
       status: 'open',
       createdAt: new Date(),
     };
@@ -412,13 +417,15 @@ export class EscrowService {
     db.saveOrder(order, escrow);
     db.saveDispute(newDispute);
 
-    // Broadcast status change to student buyer and courier runner
+    // Broadcast status change to student buyer, vendor, and courier runner
     broadcastOrderStatus(order.orderNumber, 'disputed', {
       orderId: order.id,
       orderNumber: order.orderNumber,
       status: 'disputed',
       reason: fullReason,
       disputeId: newDispute.id,
+      buyerStatement: newDispute.buyerStatement,
+      videoUrl: newDispute.videoUrl,
     });
 
     // Alert Chief Proctor Admin Mediation Terminal in real time
@@ -427,6 +434,8 @@ export class EscrowService {
       orderId: order.id,
       orderNumber: order.orderNumber,
       reason: newDispute.reason,
+      buyerStatement: newDispute.buyerStatement,
+      videoUrl: newDispute.videoUrl,
       createdAt: newDispute.createdAt,
     });
 

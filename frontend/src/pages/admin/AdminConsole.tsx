@@ -244,18 +244,59 @@ export const AdminConsole: React.FC = () => {
     if (!token) return;
     setActionLoadingId(vendorId);
     try {
-      const newApproved = !isApproved;
-      const res = await API.updateVendorStatus(vendorId, { isApproved: newApproved }, token);
+      const targetVendor = vendors.find((v) => v.id === vendorId);
+      const isCurrentlySuspended = targetVendor ? targetVendor.isSuspended : !isApproved;
+      const newSuspended = !isCurrentlySuspended;
+      const newApproved = !newSuspended;
+
+      const res = await API.updateVendorStatus(
+        vendorId,
+        { isApproved: newApproved, isSuspended: newSuspended },
+        token
+      );
       if (res.data) {
         setVendors((prev) =>
-          prev.map((v) => (v.id === vendorId ? { ...v, isApproved: newApproved } : v))
+          prev.map((v) =>
+            v.id === vendorId
+              ? {
+                  ...v,
+                  isApproved: newApproved,
+                  isSuspended: newSuspended,
+                  appealStatus: newSuspended ? v.appealStatus : 'reviewed',
+                }
+              : v
+          )
         );
         setResolutionMessage(
-          `✓ Campus Store status updated: ${newApproved ? 'Verified (Selling Privileges Unlocked)' : 'Suspended'}`
+          `✓ Campus Store status updated: ${newSuspended ? 'Suspended (Store locked, listings hidden)' : 'Verified (Selling Privileges Unlocked)'}`
         );
       }
     } catch (err: any) {
       setResolutionMessage(`❌ Failed to update vendor: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleReinstateVendor = async (vendorId: string) => {
+    if (!token) return;
+    setActionLoadingId(vendorId);
+    try {
+      const res = await API.reinstateVendor(vendorId, token);
+      if (res.success) {
+        setVendors((prev) =>
+          prev.map((v) =>
+            v.id === vendorId
+              ? { ...v, isApproved: true, isSuspended: false, appealStatus: 'reviewed' }
+              : v
+          )
+        );
+        setResolutionMessage(
+          '✓ Campus Store successfully reinstated! Appeal reviewed and privileges restored in real-time.'
+        );
+      }
+    } catch (err: any) {
+      setResolutionMessage(`❌ Failed to reinstate vendor: ${err.message}`);
     } finally {
       setActionLoadingId(null);
     }
@@ -1032,6 +1073,7 @@ export const AdminConsole: React.FC = () => {
             products={products}
             onToggleCourierStatus={handleToggleCourierStatus}
             onToggleVendorStatus={handleToggleVendorStatus}
+            onReinstateVendor={handleReinstateVendor}
             onModerateProduct={handleModerateProduct}
             onOpenProvisionModal={() => setIsProvisionModalOpen(true)}
             onRefresh={loadAdminData}
@@ -1794,6 +1836,7 @@ export const AdminConsole: React.FC = () => {
           products={products}
           onToggleCourierStatus={handleToggleCourierStatus}
           onToggleVendorStatus={handleToggleVendorStatus}
+          onReinstateVendor={handleReinstateVendor}
           onModerateProduct={handleModerateProduct}
           onOpenProvisionModal={() => {
             setRunnerPassword(`RUN-FLEET-${Math.floor(1000 + Math.random() * 9000)}`);
@@ -1805,6 +1848,239 @@ export const AdminConsole: React.FC = () => {
           actionLoadingId={actionLoadingId}
           campusName={currentCampus?.name}
         />
+      ) : activeAdminTab === 'stream' ? (
+        /* Dedicated Real-Time Campus Dispatch Stream (Desktop) */
+        <div className="card" style={{ background: '#0F172A', borderColor: '#1E293B', width: '100%', boxSizing: 'border-box' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '18px',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Bike size={20} color="#3B82F6" />
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>Real-Time Campus Dispatch Stream</h3>
+              </div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '4px 0 0 0' }}>
+                Live supervision of hostel deliveries, runner check-ins, and Zero-Room-Entry porter reception compliance.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="badge badge-info" style={{ fontSize: '11px', padding: '4px 10px' }}>
+                {stream.length} Live in Transit
+              </span>
+              <button
+                onClick={loadAdminData}
+                style={{
+                  background: '#1E293B',
+                  border: '1px solid #334155',
+                  color: '#94A3B8',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                }}
+              >
+                <RefreshCw size={12} /> Refresh
+              </button>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1E293B', color: '#64748B', textAlign: 'left' }}>
+                  <th style={{ padding: '12px 10px' }}>Order #</th>
+                  <th style={{ padding: '12px 10px' }}>Package Tag</th>
+                  <th style={{ padding: '12px 10px' }}>Merchant</th>
+                  <th style={{ padding: '12px 10px' }}>Assigned Runner</th>
+                  <th style={{ padding: '12px 10px' }}>Hostel Dropoff Checkpoint</th>
+                  <th style={{ padding: '12px 10px' }}>Amount (NGN)</th>
+                  <th style={{ padding: '12px 10px' }}>Dispatch Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stream.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '36px 12px', textAlign: 'center', color: '#64748B' }}>
+                      No active campus dispatches currently in transit across hostels.
+                    </td>
+                  </tr>
+                ) : (
+                  stream.map((item, idx) => (
+                    <tr key={item.orderId || item.id || idx} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '14px 10px', fontWeight: 800, color: '#F59E0B' }}>
+                        #{item.orderNumber}
+                      </td>
+                      <td style={{ padding: '14px 10px', color: '#94A3B8', fontFamily: 'monospace' }}>
+                        {item.packageTag || 'RUN-PKG-4829'}
+                      </td>
+                      <td style={{ padding: '14px 10px', fontWeight: 600 }}>{item.vendor || 'Campus Vendor'}</td>
+                      <td style={{ padding: '14px 10px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Bike size={13} color="#3B82F6" />
+                          <span>{item.courier || 'David Adeleke'}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 10px', color: '#CBD5E1' }}>
+                        {item.destination || item.dropoffHostel || 'Queen Esther Hall (Reception Desk)'}
+                      </td>
+                      <td style={{ padding: '14px 10px', fontWeight: 800, color: '#10B981' }}>
+                        ₦{(item.totalAmount || item.escrowAmount || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '14px 10px' }}>
+                        <span
+                          className={`badge ${
+                            item.status === 'inspected_completed'
+                              ? 'badge-success'
+                              : item.status === 'at_porter_desk'
+                              ? 'badge-amber'
+                              : item.status === 'disputed'
+                              ? 'badge-danger'
+                              : 'badge-info'
+                          }`}
+                          style={{ fontSize: '10px' }}
+                        >
+                          {item.status?.replace('_', ' ')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : activeAdminTab === 'payouts' ? (
+        /* Dedicated Atomic Settlement & Payout Ledger (Desktop) */
+        <div className="card" style={{ background: '#0F172A', borderColor: '#1E293B', width: '100%', boxSizing: 'border-box' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '18px',
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <DollarSign size={20} color="#10B981" />
+                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0 }}>
+                  Atomic Escrow Settlement & Payout Audit Ledger
+                </h3>
+              </div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', margin: '4px 0 0 0' }}>
+                Cryptographically audited Paystack subaccount split ledger. Funds release atomically upon 4-digit PIN verification.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="badge badge-success" style={{ fontSize: '11px', padding: '4px 10px' }}>
+                Paystack Split Engine Active
+              </span>
+              <button
+                onClick={loadAdminData}
+                style={{
+                  background: '#1E293B',
+                  border: '1px solid #334155',
+                  color: '#94A3B8',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '12px',
+                }}
+              >
+                <RefreshCw size={12} /> Sync Ledger
+              </button>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #1E293B', color: '#64748B', textAlign: 'left' }}>
+                  <th style={{ padding: '12px 10px' }}>Order #</th>
+                  <th style={{ padding: '12px 10px' }}>Recipient Type</th>
+                  <th style={{ padding: '12px 10px' }}>Beneficiary / Subaccount</th>
+                  <th style={{ padding: '12px 10px' }}>Amount (NGN)</th>
+                  <th style={{ padding: '12px 10px' }}>Paystack Transfer Code</th>
+                  <th style={{ padding: '12px 10px' }}>Settlement Status</th>
+                  <th style={{ padding: '12px 10px' }}>Disbursement Timestamp</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '36px 12px', textAlign: 'center', color: '#64748B' }}>
+                      No settlement transactions logged yet in this session. Complete a delivery drop with PIN to observe live payouts.
+                    </td>
+                  </tr>
+                ) : (
+                  payouts.map((p, idx) => (
+                    <tr key={p.id || idx} style={{ borderBottom: '1px solid #1E293B' }}>
+                      <td style={{ padding: '14px 10px', fontWeight: 800, color: '#F59E0B' }}>
+                        #{p.orderNumber || p.orderId}
+                      </td>
+                      <td style={{ padding: '14px 10px' }}>
+                        <span
+                          style={{
+                            background:
+                              p.recipientType === 'vendor'
+                                ? '#1E3A8A'
+                                : p.recipientType === 'courier'
+                                ? '#064E3B'
+                                : '#3B0764',
+                            color:
+                              p.recipientType === 'vendor'
+                                ? '#93C5FD'
+                                : p.recipientType === 'courier'
+                                ? '#6EE7B7'
+                                : '#E9D5FF',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                          }}
+                        >
+                          {p.recipientType === 'vendor'
+                            ? 'MERCHANT VENDOR (90%)'
+                            : p.recipientType === 'courier'
+                            ? 'SWIFTDROP RUNNER (₦250)'
+                            : 'TECH FEE (₦100)'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 10px', color: '#E2E8F0' }}>
+                        {p.recipientName || (p.recipientType === 'vendor' ? 'Tunde Kicks & Thrift (OPay)' : p.recipientType === 'courier' ? 'David Adeleke (Kuda)' : 'UniHive Escrow Vault')}
+                      </td>
+                      <td style={{ padding: '14px 10px', fontWeight: 800, color: '#10B981' }}>
+                        ₦{(p.amount || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '14px 10px', fontFamily: 'monospace', color: '#A78BFA' }}>
+                        {p.paystackTransferCode || `TRF_${Date.now()}`}
+                      </td>
+                      <td style={{ padding: '14px 10px' }}>
+                        <span className="badge badge-success" style={{ fontSize: '10px' }}>
+                          ✓ SUCCESSFUL
+                        </span>
+                      </td>
+                      <td style={{ padding: '14px 10px', color: '#94A3B8', fontSize: '11px' }}>
+                        {p.transferredAt ? new Date(p.transferredAt).toLocaleString() : 'Just now'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <>
           {/* 4 Large KPI Cards (Screen 10 Specification) */}

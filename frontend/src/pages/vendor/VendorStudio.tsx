@@ -95,10 +95,30 @@ const NIGERIAN_BANKS = [
 ];
 
 export const VendorStudio: React.FC = () => {
-  const { token } = useAuth();
+  const { token, user, vendorProfile } = useAuth();
   const { currentCampus, hostels } = useCampus();
   const { socket } = useSocket();
   const { isMobile } = useResponsive();
+
+  // Suspension & Official Appeal State
+  const [vendorIsSuspended, setVendorIsSuspended] = useState<boolean>(() => {
+    return !!(user?.isSuspended || vendorProfile?.isSuspended);
+  });
+  const [vendorAppealStatus, setVendorAppealStatus] = useState<string | null>(() => {
+    return vendorProfile?.appealStatus || (user as any)?.appealStatus || null;
+  });
+  const [vendorAppealMessage, setVendorAppealMessage] = useState<string>(() => {
+    return vendorProfile?.appealMessage || (user as any)?.appealMessage || '';
+  });
+  const [appealInput, setAppealInput] = useState('');
+  const [submittingAppeal, setSubmittingAppeal] = useState(false);
+  const [appealSuccess, setAppealSuccess] = useState(false);
+  const [appealError, setAppealError] = useState<string | null>(null);
+
+  // Vendor Dispute Defense Statements state
+  const [disputeStatementsMap, setDisputeStatementsMap] = useState<Record<string, string>>({});
+  const [disputeInputMap, setDisputeInputMap] = useState<Record<string, string>>({});
+  const [submittingDisputeMap, setSubmittingDisputeMap] = useState<Record<string, boolean>>({});
 
   const [products, setProducts] = useState<Product[]>([]);
   const [deliveryMode, setDeliveryMode] = useState<'courier' | 'self'>('courier');
@@ -373,11 +393,81 @@ export const VendorStudio: React.FC = () => {
     socket.on('order:status_changed', handleOrderStatus);
     socket.on('vendor:new_notification', handleVendorNotif);
 
+    // Real-time listener for vendor suspension and appeal updates
+    const handleVendorStatusChange = (data: any) => {
+      console.log('[VendorStudio] Real-time vendor status change received:', data);
+      if (data.isSuspended !== undefined) {
+        setVendorIsSuspended(!!data.isSuspended);
+      }
+      if (data.appealStatus !== undefined) {
+        setVendorAppealStatus(data.appealStatus);
+      }
+      if (data.appealMessage !== undefined) {
+        setVendorAppealMessage(data.appealMessage);
+      }
+    };
+    socket.on('vendor:status_changed', handleVendorStatusChange);
+
     return () => {
       socket.off('order:status_changed', handleOrderStatus);
       socket.off('vendor:new_notification', handleVendorNotif);
+      socket.off('vendor:status_changed', handleVendorStatusChange);
     };
   }, [socket]);
+
+  // Load current vendor profile on mount
+  useEffect(() => {
+    if (!token) return;
+    API.getVendorProfile(token)
+      .then((res: any) => {
+        if (res.success && res.data) {
+          setVendorIsSuspended(!!res.data.isSuspended);
+          setVendorAppealStatus(res.data.appealStatus || null);
+          setVendorAppealMessage(res.data.appealMessage || '');
+        }
+      })
+      .catch((err) => console.warn('Could not load vendor profile', err));
+  }, [token]);
+
+  const handleSendAppeal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!appealInput.trim() || appealInput.trim().length < 5) {
+      setAppealError('Please write a detailed explanation for your appeal (minimum 5 characters).');
+      return;
+    }
+    if (!token) return;
+    setSubmittingAppeal(true);
+    setAppealError(null);
+    try {
+      const res = await API.submitVendorAppeal(appealInput.trim(), token);
+      if (res.success) {
+        setVendorAppealStatus('pending');
+        setVendorAppealMessage(appealInput.trim());
+        setAppealSuccess(true);
+      }
+    } catch (err: any) {
+      setAppealError(err.message || 'Failed to submit appeal');
+    } finally {
+      setSubmittingAppeal(false);
+    }
+  };
+
+  const handleSubmitDefenseStatement = async (orderId: string) => {
+    const text = disputeInputMap[orderId];
+    if (!text || text.trim().length < 3) return;
+    if (!token) return;
+    setSubmittingDisputeMap((prev) => ({ ...prev, [orderId]: true }));
+    try {
+      const res = await API.submitVendorDisputeStatement(orderId, text.trim(), token);
+      if (res.success) {
+        setDisputeStatementsMap((prev) => ({ ...prev, [orderId]: text.trim() }));
+      }
+    } catch (err: any) {
+      console.error('Failed to submit vendor defense statement', err);
+    } finally {
+      setSubmittingDisputeMap((prev) => ({ ...prev, [orderId]: false }));
+    }
+  };
 
   // Active deliveries pending handshake (either designated pickup or all active pending orders)
   const activePickupDeliveries = orders.filter(
@@ -747,6 +837,217 @@ export const VendorStudio: React.FC = () => {
   };
 
   const primaryAccount = payoutAccounts.find((a) => a.isPrimary) || payoutAccounts[0];
+
+  // If vendor account is suspended by admin, display ONLY the suspension notice & official appeal form
+  if (vendorIsSuspended) {
+    return (
+      <div
+        style={{
+          minHeight: '80vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px 16px 80px 16px',
+          background: '#0B1120',
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '560px',
+            width: '100%',
+            background: '#0F172A',
+            border: '2px solid #EF4444',
+            borderRadius: '24px',
+            padding: '36px 24px',
+            boxShadow: '0 25px 50px -12px rgba(239, 68, 68, 0.25)',
+            color: '#F8FAFC',
+            textAlign: 'center',
+            boxSizing: 'border-box',
+          }}
+        >
+          {/* Warning Icon */}
+          <div
+            style={{
+              width: '68px',
+              height: '68px',
+              borderRadius: '20px',
+              background: 'rgba(239, 68, 68, 0.15)',
+              border: '1.5px solid rgba(239, 68, 68, 0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#EF4444',
+              margin: '0 auto 20px auto',
+            }}
+          >
+            <AlertTriangle size={36} />
+          </div>
+
+          <h2
+            style={{
+              fontSize: '22px',
+              fontWeight: 800,
+              color: '#FFFFFF',
+              letterSpacing: '-0.3px',
+              margin: '0 0 10px 0',
+            }}
+          >
+            Your Vendor Account Has Been Suspended
+          </h2>
+
+          <p
+            style={{
+              fontSize: '13.5px',
+              color: '#94A3B8',
+              lineHeight: 1.6,
+              margin: '0 0 20px 0',
+            }}
+          >
+            Your campus merchant store privileges have been placed on administrative hold by the <strong>Chief Proctor & Campus Operations Desk</strong>.
+            All your product listings have been hidden from the marketplace, and pending payouts are frozen.
+          </p>
+
+          <div
+            style={{
+              background: 'rgba(245, 158, 11, 0.1)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '14px',
+              padding: '14px 16px',
+              marginBottom: '24px',
+              textAlign: 'left',
+              fontSize: '12.5px',
+              color: '#FCD34D',
+              lineHeight: 1.5,
+            }}
+          >
+            ℹ️ If you believe we have made a wrong decision or if you have resolved the compliance violation, you can submit an appeal below. Your appeal message will be displayed directly to the Chief Proctor in the Admin Console.
+          </div>
+
+          {/* Pending Appeal Notice */}
+          {vendorAppealStatus === 'pending' || appealSuccess ? (
+            <div
+              style={{
+                background: '#162035',
+                border: '1.5px solid #3B82F6',
+                borderRadius: '16px',
+                padding: '20px',
+                textAlign: 'left',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '10px',
+                }}
+              >
+                <Clock size={18} color="#60A5FA" />
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#93C5FD' }}>
+                  Appeal Submitted & Under Proctor Review
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#CBD5E1', margin: '0 0 10px 0' }}>
+                Your appeal message has been received and is visible in the <strong>Campus Stores Desk</strong> of the Admin Console:
+              </p>
+              <div
+                style={{
+                  background: '#0B1120',
+                  border: '1px solid #1E293B',
+                  borderRadius: '10px',
+                  padding: '12px',
+                  fontSize: '12.5px',
+                  color: '#F1F5F9',
+                  fontStyle: 'italic',
+                }}
+              >
+                "{vendorAppealMessage || appealInput}"
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '10px' }}>
+                Your account will automatically restore in real-time once the Chief Proctor reviews and reinstates your store.
+              </div>
+            </div>
+          ) : (
+            /* Appeal Form */
+            <form onSubmit={handleSendAppeal} style={{ textAlign: 'left' }}>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  color: '#CBD5E1',
+                  marginBottom: '8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                State Your Appeal Reasons:
+              </label>
+              <textarea
+                rows={4}
+                value={appealInput}
+                onChange={(e) => setAppealInput(e.target.value)}
+                placeholder="Explain why you believe this decision was a mistake or detail the steps taken to comply with campus regulations..."
+                style={{
+                  width: '100%',
+                  background: '#162035',
+                  border: '1px solid #334155',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  color: '#FFFFFF',
+                  fontSize: '13px',
+                  lineHeight: 1.5,
+                  boxSizing: 'border-box',
+                  resize: 'vertical',
+                  marginBottom: '12px',
+                  outline: 'none',
+                }}
+              />
+
+              {appealError && (
+                <div
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.2)',
+                    color: '#FCA5A5',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    fontSize: '11.5px',
+                    marginBottom: '12px',
+                  }}
+                >
+                  {appealError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={submittingAppeal}
+                style={{
+                  width: '100%',
+                  background: '#EF4444',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  fontSize: '14px',
+                  fontWeight: 800,
+                  cursor: submittingAppeal ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)',
+                }}
+              >
+                <ShieldCheck size={18} />
+                <span>{submittingAppeal ? 'Transmitting Appeal...' : 'Submit Official Appeal to Proctor'}</span>
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '16px 16px 96px 16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1679,6 +1980,114 @@ export const VendorStudio: React.FC = () => {
                             'Payment locked in Paystack escrow. Awaiting dispatch assignment.'}
                         </span>
                       </div>
+
+                      {/* Dispute Defense Statement Box */}
+                      {isDisputed && (
+                        <div
+                          style={{
+                            background: '#FEF2F2',
+                            border: '1.5px solid #F87171',
+                            borderRadius: '10px',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <AlertTriangle size={15} color="#DC2626" />
+                              <span style={{ fontSize: '12px', fontWeight: 800, color: '#991B1B' }}>
+                                Order Disputed at Porter Lodge Inspection
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '10px', background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>
+                              UNDER PROCTOR REVIEW
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '11.5px', color: '#7F1D1D' }}>
+                            <strong>Buyer Complaint:</strong> {order.reason || 'Item mismatch flagged during physical handover.'}
+                          </div>
+
+                          {/* Video Evidence if uploaded by buyer */}
+                          {order.videoUrl && (
+                            <div style={{ borderRadius: '6px', overflow: 'hidden', border: '1px solid #FECACA', background: '#000' }}>
+                              <video
+                                src={order.videoUrl}
+                                controls
+                                playsInline
+                                style={{ width: '100%', maxHeight: '140px', display: 'block' }}
+                              />
+                              <div style={{ padding: '4px 8px', background: '#FFF1F2', fontSize: '10px', color: '#991B1B', fontWeight: 700 }}>
+                                🎥 5-Second Defect Video Evidence Uploaded by Buyer
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Existing Defense Statement or Input Form */}
+                          {disputeStatementsMap[order.id] || order.merchantStatement ? (
+                            <div style={{ background: '#FFFFFF', border: '1px solid #FECACA', borderRadius: '8px', padding: '8px 10px' }}>
+                              <span style={{ fontSize: '10.5px', fontWeight: 800, color: '#991B1B', display: 'block', marginBottom: '2px' }}>
+                                Your Submitted Statement to Chief Proctor:
+                              </span>
+                              <p style={{ fontSize: '11.5px', color: '#334155', margin: 0, fontStyle: 'italic' }}>
+                                "{disputeStatementsMap[order.id] || order.merchantStatement}"
+                              </p>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <label style={{ fontSize: '11px', fontWeight: 800, color: '#991B1B' }}>
+                                Write Your Vendor Defense Statement:
+                              </label>
+                              <textarea
+                                rows={2}
+                                value={disputeInputMap[order.id] || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setDisputeInputMap((prev) => ({ ...prev, [order.id]: val }));
+                                }}
+                                placeholder="Explain package condition, verified item size/specs, or offer a solution..."
+                                style={{
+                                  width: '100%',
+                                  padding: '8px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #FCA5A5',
+                                  background: '#FFFFFF',
+                                  fontSize: '11.5px',
+                                  color: '#0F172A',
+                                  boxSizing: 'border-box',
+                                  outline: 'none',
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSubmitDefenseStatement(order.id)}
+                                disabled={submittingDisputeMap[order.id]}
+                                style={{
+                                  alignSelf: 'flex-start',
+                                  background: '#DC2626',
+                                  color: '#FFFFFF',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  padding: '6px 12px',
+                                  fontSize: '11px',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {submittingDisputeMap[order.id] ? 'Submitting...' : 'Send Statement to Proctor Desk'}
+                              </button>
+                            </div>
+                          )}
+
+                          {order.resolutionNotes && (
+                            <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: '8px', padding: '8px 10px', fontSize: '11px', color: '#1E40AF' }}>
+                              <strong>Proctor Ruling Statement:</strong> {order.resolutionNotes}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Integrated Official Paystack Email Receipt Action */}
                       {(() => {

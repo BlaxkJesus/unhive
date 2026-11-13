@@ -142,12 +142,22 @@ export const API = {
     }),
   reportOrderDispute: (
     orderId: string,
-    payload: { reason: string; issueCategory?: string },
+    payload: { reason: string; issueCategory?: string; videoUrl?: string; buyerStatement?: string },
     token: string
   ) =>
     apiRequest(`/orders/${orderId}/dispute`, {
       method: 'POST',
       body: JSON.stringify(payload),
+      token,
+    }),
+  submitVendorDisputeStatement: (
+    orderId: string,
+    statement: string,
+    token: string
+  ) =>
+    apiRequest(`/orders/${orderId}/dispute/vendor-statement`, {
+      method: 'POST',
+      body: JSON.stringify({ statement }),
       token,
     }),
 
@@ -259,6 +269,11 @@ export const API = {
       body: JSON.stringify(payload),
       token,
     }),
+  reinstateVendor: (vendorId: string, token: string) =>
+    apiRequest(`/admin/vendors/${vendorId}/reinstate`, {
+      method: 'POST',
+      token,
+    }),
   getAdminProducts: (params?: { campusId?: string; vendorId?: string }, token?: string) => {
     const searchParams = new URLSearchParams();
     if (params?.campusId) searchParams.append('campusId', params.campusId);
@@ -311,5 +326,13 @@ export const API = {
       method: 'DELETE',
       token,
     }),
+  submitVendorAppeal: (appealMessage: string, token: string) =>
+    apiRequest('/vendor/appeal', {
+      method: 'POST',
+      body: JSON.stringify({ appealMessage }),
+      token,
+    }),
+  getVendorProfile: (token: string) =>
+    apiRequest('/vendor/profile', { token }),
 };
 

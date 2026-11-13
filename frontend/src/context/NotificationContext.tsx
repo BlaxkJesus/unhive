@@ -362,7 +362,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('[Notification Engine] Dispute event received:', data);
       dispatchNotification({
         title: '⚠️ New Order Dispute Lodged',
-        body: `Order #${data?.orderNumber || 'RUN-4829'} flagged for proctor review: ${data?.reason || 'Buyer reported condition issue'}.`,
+        body: `Order #${data?.orderNumber || 'RUN-4829'} flagged for proctor review: ${data?.reason || 'Buyer reported inspection defect'}.`,
         type: 'dispute',
         role: 'admin',
         icon: '🛡️',
@@ -370,11 +370,62 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
     };
 
+    const handleDisputeResolved = (data: any) => {
+      console.log('[Notification Engine] Dispute resolved event:', data);
+      const isRefund = data.action === 'refund_buyer' || data.status === 'refunded';
+      dispatchNotification({
+        title: isRefund ? '↩️ Escrow Refund Authorized' : '⚖️ Merchant Payout Approved',
+        body: `Order #${data?.orderNumber || 'RUN-4829'}: ${data.resolutionNotes || (isRefund ? '100% refund issued to buyer.' : 'Funds released to vendor.')}`,
+        type: 'dispute',
+        role: 'all',
+        icon: isRefund ? '↩️' : '✓',
+      });
+    };
+
+    const handleVendorAppealSubmitted = (data: any) => {
+      console.log('[Notification Engine] Vendor appeal submitted:', data);
+      dispatchNotification({
+        title: '🚨 Merchant Appeal Submitted',
+        body: `Store '${data.businessName || 'Vendor'}' filed an appeal: "${(data.appealMessage || '').substring(0, 50)}..."`,
+        type: 'system',
+        role: 'admin',
+        icon: '📋',
+        link: 'admin',
+      });
+    };
+
+    const handleVendorStatusChange = (data: any) => {
+      console.log('[Notification Engine] Vendor status change:', data);
+      if (data.isSuspended) {
+        dispatchNotification({
+          title: '⚠️ Store Account Suspended',
+          body: 'Your vendor account has been placed on administrative hold by the Proctor Desk. You may submit an appeal.',
+          type: 'system',
+          role: 'vendor',
+          icon: '⚠️',
+          link: 'vendor',
+        });
+      } else if (data.isSuspended === false) {
+        dispatchNotification({
+          title: '🎉 Store Reinstated!',
+          body: 'Your vendor appeal has been reviewed and approved. Selling privileges and products restored!',
+          type: 'system',
+          role: 'vendor',
+          icon: '🎉',
+          link: 'vendor',
+        });
+      }
+    };
+
     socket.on('order:status_changed', handleOrderStatus);
     socket.on('order:item_picked_up', handleItemPickedUp);
     socket.on('vendor:new_notification', handleVendorNotif);
     socket.on('dispatch:available', handleCampusDispatch);
     socket.on('dispute:raised', handleDisputeEvent);
+    socket.on('admin:dispute_opened', handleDisputeEvent);
+    socket.on('admin:dispute_resolved', handleDisputeResolved);
+    socket.on('admin:vendor_appeal_submitted', handleVendorAppealSubmitted);
+    socket.on('vendor:status_changed', handleVendorStatusChange);
 
     return () => {
       socket.off('order:status_changed', handleOrderStatus);
@@ -382,6 +433,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       socket.off('vendor:new_notification', handleVendorNotif);
       socket.off('dispatch:available', handleCampusDispatch);
       socket.off('dispute:raised', handleDisputeEvent);
+      socket.off('admin:dispute_opened', handleDisputeEvent);
+      socket.off('admin:dispute_resolved', handleDisputeResolved);
+      socket.off('admin:vendor_appeal_submitted', handleVendorAppealSubmitted);
+      socket.off('vendor:status_changed', handleVendorStatusChange);
     };
   }, [socket, dispatchNotification]);
 

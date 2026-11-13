@@ -27,7 +27,7 @@ export const MobileLinkModal: React.FC<MobileLinkModalProps> = ({
   if (!isOpen) return null;
 
   // The active public tunnel URL (works across any cellular data / network)
-  const publicTunnelUrl = 'https://67da0f11964f29.lhr.life';
+  const publicTunnelUrl = 'https://de2aa3205b7824.app.lhr.life';
 
   // The active LAN IP address of this machine on the local Wi-Fi network
   const lanIp = '10.86.67.215';

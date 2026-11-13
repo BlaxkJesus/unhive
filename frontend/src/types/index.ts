@@ -27,6 +27,10 @@ export interface VendorProfile {
   trustScore: number;
   completedOrdersCount: number;
   isApproved: boolean;
+  isSuspended?: boolean;
+  appealMessage?: string;
+  appealSubmittedAt?: string;
+  appealStatus?: 'pending' | 'reviewed' | 'rejected';
 }
 
 export interface VendorPayoutAccount {
@@ -192,6 +196,12 @@ export interface OrderDispute {
   resolutionNotes?: string;
   resolvedAt?: string;
   createdAt: string;
+  evidenceUrls?: string[];
+  videoUrl?: string;
+  buyerStatement?: string;
+  merchantStatement?: string;
+  vendorStatement?: string;
+  courierNotes?: string;
 }
 
 export interface AdminDashboardStats {

@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Router, Response } from 'express';
 import { OrderService } from '../services/order.service.js';
 import { EscrowService } from '../services/escrow.service.js';
+import { AdminService } from '../services/admin.service.js';
 import { CONFIG } from '../config/constants.js';
 import {
   authenticateJwt,
@@ -250,13 +251,13 @@ orderRouter.post('/webhooks/paystack', async (req, res): Promise<void> => {
   }
 });
 
-// POST /api/v1/orders/:id/dispute (Customer raises physical inspection complaint)
+// POST /api/v1/orders/:id/dispute (Customer raises physical inspection complaint with optional 5s video)
 orderRouter.post(
   '/:id/dispute',
   authenticateJwt,
   async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const { reason, issueCategory } = req.body;
+      const { reason, issueCategory, videoUrl, buyerStatement } = req.body;
 
       if (!reason || typeof reason !== 'string' || reason.trim().length < 5) {
         res.status(400).json({
@@ -271,6 +272,8 @@ orderRouter.post(
         buyerUserId: req.user!.userId,
         reason,
         issueCategory,
+        videoUrl,
+        buyerStatement,
       });
 
       res.status(200).json({
@@ -281,6 +284,40 @@ orderRouter.post(
       res.status(400).json({
         error: 'DisputeCreationFailed',
         message: err.message || 'Failed to lodge complaint',
+      });
+    }
+  }
+);
+
+// POST /api/v1/orders/:id/dispute/vendor-statement (Vendor submits statement/defense in open dispute)
+orderRouter.post(
+  '/:id/dispute/vendor-statement',
+  authenticateJwt,
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+      const { statement } = req.body;
+      if (!statement || typeof statement !== 'string' || statement.trim().length < 3) {
+        res.status(400).json({
+          error: 'BadRequest',
+          message: 'Please provide a valid vendor statement (at least 3 characters).',
+        });
+        return;
+      }
+
+      const result = await AdminService.submitVendorStatement({
+        orderId: String(req.params.id),
+        vendorUserId: req.user!.userId,
+        statement: statement.trim(),
+      });
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (err: any) {
+      res.status(400).json({
+        error: 'StatementSubmissionFailed',
+        message: err.message || 'Failed to submit statement',
       });
     }
   }

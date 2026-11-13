@@ -1149,6 +1149,82 @@ export const DisputeMediationDesk: React.FC<DisputeMediationDeskProps> = ({
                 </span>
               </div>
 
+              {/* 5-Second Video Evidence Clip (if uploaded by buyer) */}
+              {currentDispute.videoUrl && (
+                <div
+                  style={{
+                    marginBottom: '14px',
+                    borderRadius: '10px',
+                    overflow: 'hidden',
+                    border: '1.5px solid #F59E0B',
+                    background: '#000000',
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: '8px 12px',
+                      background: 'rgba(245, 158, 11, 0.15)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <span style={{ fontSize: '11.5px', fontWeight: 800, color: '#FCD34D' }}>
+                      🎥 5-SECOND PHYSICAL EVIDENCE CLIP (SUBMITTED BY BUYER)
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        background: '#F59E0B',
+                        color: '#000',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontWeight: 800,
+                      }}
+                    >
+                      ≤ 5s Verified
+                    </span>
+                  </div>
+                  <video
+                    src={currentDispute.videoUrl}
+                    controls
+                    playsInline
+                    style={{ width: '100%', maxHeight: '240px', display: 'block' }}
+                  />
+                </div>
+              )}
+
+              {/* Institutional Protocol for 3-PIN Lockouts */}
+              {(currentDispute.category === 'pin_lockout' || currentDispute.isPinLocked || currentDispute.pinAttemptsCount >= 3) && (
+                <div
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.12)',
+                    border: '1.5px solid #EF4444',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                    <ShieldAlert size={16} color="#EF4444" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 800, color: '#FCA5A5' }}>
+                      Institutional Procedure: 3-Attempt Handshake PIN Lockout
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: '#E2E8F0', lineHeight: 1.5 }}>
+                    <p style={{ margin: '0 0 5px 0' }}>
+                      <strong>1. Physical Custody Hold:</strong> Zero-Room-Entry policy is active. Runner & package remain downstairs at {currentDispute.location?.porterLodgeName || 'Ground-Floor Porter Lodge'}.
+                    </p>
+                    <p style={{ margin: '0 0 5px 0' }}>
+                      <strong>2. Identity Verification:</strong> Student buyer ({currentDispute.buyerName}) presents physical RUN Matriculation ID card (Matric: {currentDispute.buyer?.matricNumber || 'RUN/2023/...'}) to hostel porter.
+                    </p>
+                    <p style={{ margin: 0 }}>
+                      <strong>3. Decision:</strong> If identity matches and was an honest typo, select <strong>"Release to Vendor"</strong>. If third party or suspected fraud, select <strong>"100% Refund Buyer"</strong>.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div
                 style={{
                   display: 'flex',

@@ -89,11 +89,19 @@ adminRouter.post('/disputes/:id/resolve', (req: AuthenticatedRequest, res: Respo
       return;
     }
 
+    if (!resolutionNotes || typeof resolutionNotes !== 'string' || resolutionNotes.trim().length < 3) {
+      res.status(400).json({
+        error: 'BadRequest',
+        message: 'A proctor verdict statement explaining why this decision was reached is strictly required.',
+      });
+      return;
+    }
+
     const result = AdminService.resolveDispute({
       disputeId: String(req.params.id),
       adminUserId: req.user!.userId,
       action,
-      resolutionNotes: resolutionNotes || 'Mediation completed by campus proctor',
+      resolutionNotes: resolutionNotes.trim(),
     });
 
     res.status(200).json({
@@ -188,6 +196,23 @@ adminRouter.post('/vendors/:id/status', async (req: AuthenticatedRequest, res: R
     });
   } catch (err: any) {
     res.status(400).json({ error: 'VendorUpdateFailed', message: err.message });
+  }
+});
+
+// POST /api/v1/admin/vendors/:id/reinstate (Reinstate suspended vendor after reviewing appeal)
+adminRouter.post('/vendors/:id/reinstate', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const result = await AdminService.updateVendorStatus(String(req.params.id), {
+      isSuspended: false,
+      isApproved: true,
+    });
+    res.status(200).json({
+      success: true,
+      message: 'Vendor successfully reinstated and appeal marked reviewed.',
+      data: result,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: 'VendorReinstatementFailed', message: err.message });
   }
 });
 

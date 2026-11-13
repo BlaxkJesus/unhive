@@ -55,6 +55,10 @@ export interface VendorProfileEntity {
   trustScore: number;
   completedOrdersCount: number;
   isApproved: boolean;
+  isSuspended?: boolean;
+  appealMessage?: string;
+  appealSubmittedAt?: Date;
+  appealStatus?: 'pending' | 'reviewed' | 'rejected';
 }
 
 export interface VendorPayoutAccountEntity {
@@ -206,8 +210,10 @@ export interface OrderDisputeEntity {
   createdAt: Date;
   category?: 'pin_lockout' | 'wrong_item' | 'item_defect' | 'missing_item' | 'unfulfilled';
   evidenceUrls?: string[];
+  videoUrl?: string;
   buyerStatement?: string;
   merchantStatement?: string;
+  vendorStatement?: string;
   courierNotes?: string;
 }
 
@@ -769,6 +775,7 @@ export class UniHiveStore {
         merchantStatement: 'Apologies from Tunde Kicks warehouse. The shelf picker boxed EU 41 by mistake. We have EU 44 available or accept full proctor refund.',
         courierNotes: 'Item is held safely at Joshua Hall Ground-Floor Porter Lodge in package RUN-PKG-4812. Student refused inspection handshake.',
         evidenceUrls: ['https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800'],
+        videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
         status: 'open',
         createdAt: new Date(Date.now() - 45 * 60 * 1000),
       });

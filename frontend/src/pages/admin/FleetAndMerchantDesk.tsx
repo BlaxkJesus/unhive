@@ -20,6 +20,7 @@ interface FleetAndMerchantDeskProps {
   products: any[];
   onToggleCourierStatus: (courierId: string, currentStatus: string, isSuspended: boolean) => Promise<void>;
   onToggleVendorStatus: (vendorId: string, isApproved: boolean) => Promise<void>;
+  onReinstateVendor?: (vendorId: string) => Promise<void>;
   onModerateProduct: (productId: string, currentActive: boolean) => Promise<void>;
   onOpenProvisionModal: () => void;
   onRefresh: () => void;
@@ -34,6 +35,7 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
   products,
   onToggleCourierStatus,
   onToggleVendorStatus,
+  onReinstateVendor,
   onModerateProduct,
   onOpenProvisionModal,
   onRefresh,
@@ -686,45 +688,117 @@ export const FleetAndMerchantDesk: React.FC<FleetAndMerchantDeskProps> = ({
                       <span>Trust: <strong style={{ color: '#F59E0B' }}>{v.trustScore}%</strong></span>
                     </div>
 
-                    {/* Bottom Action Controls */}
-                    <div style={{ borderTop: '1px solid #1E293B', paddingTop: '10px', display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => onToggleVendorStatus(v.id, v.isApproved)}
-                        disabled={isLoading}
+                    {/* Official Vendor Appeal Message Banner (Screen 10 Specification) */}
+                    {v.appealMessage && (
+                      <div
                         style={{
-                          flex: 1,
-                          background: v.isApproved
-                            ? 'rgba(239, 68, 68, 0.12)'
-                            : 'rgba(16, 185, 129, 0.15)',
-                          border: v.isApproved
-                            ? '1px solid rgba(239, 68, 68, 0.35)'
-                            : '1px solid rgba(16, 185, 129, 0.4)',
-                          color: v.isApproved ? '#FCA5A5' : '#34D399',
-                          padding: '7px 12px',
-                          borderRadius: '8px',
-                          fontSize: '11.5px',
-                          fontWeight: 700,
-                          cursor: isLoading ? 'not-allowed' : 'pointer',
+                          background: 'rgba(245, 158, 11, 0.12)',
+                          border: '1.5px solid #F59E0B',
+                          borderRadius: '10px',
+                          padding: '10px 12px',
                           display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
+                          flexDirection: 'column',
+                          gap: '4px',
                         }}
                       >
-                        {isLoading ? (
-                          <span>Updating...</span>
-                        ) : v.isApproved ? (
-                          <>
-                            <ShieldAlert size={14} />
-                            <span>Suspend Store</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck size={14} />
-                            <span>Verify Store (Grant Selling)</span>
-                          </>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: '#FCD34D' }}>
+                            🚨 OFFICIAL VENDOR APPEAL SUBMITTED
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '9.5px',
+                              background: '#F59E0B',
+                              color: '#000',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 800,
+                            }}
+                          >
+                            {v.appealStatus === 'reviewed' ? 'REVIEWED' : 'PENDING ACTION'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '12px', color: '#FEF3C7', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
+                          "{v.appealMessage}"
+                        </p>
+                        {v.appealSubmittedAt && (
+                          <div style={{ fontSize: '10px', color: '#94A3B8' }}>
+                            Submitted: {new Date(v.appealSubmittedAt).toLocaleString()}
+                          </div>
                         )}
-                      </button>
+                      </div>
+                    )}
+
+                    {/* Bottom Action Controls */}
+                    <div style={{ borderTop: '1px solid #1E293B', paddingTop: '10px', display: 'flex', gap: '8px' }}>
+                      {v.isSuspended ? (
+                        <button
+                          onClick={() => {
+                            if (onReinstateVendor) {
+                              onReinstateVendor(v.id);
+                            } else {
+                              onToggleVendorStatus(v.id, false);
+                            }
+                          }}
+                          disabled={isLoading}
+                          style={{
+                            flex: 1,
+                            background: 'rgba(16, 185, 129, 0.2)',
+                            border: '1.5px solid #10B981',
+                            color: '#6EE7B7',
+                            padding: '8px 12px',
+                            borderRadius: '8px',
+                            fontSize: '11.5px',
+                            fontWeight: 800,
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          <ShieldCheck size={14} />
+                          <span>{isLoading ? 'Reinstating...' : '✓ Reinstate Store (Approve Appeal)'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onToggleVendorStatus(v.id, v.isApproved)}
+                          disabled={isLoading}
+                          style={{
+                            flex: 1,
+                            background: v.isApproved
+                              ? 'rgba(239, 68, 68, 0.12)'
+                              : 'rgba(16, 185, 129, 0.15)',
+                            border: v.isApproved
+                              ? '1px solid rgba(239, 68, 68, 0.35)'
+                              : '1px solid rgba(16, 185, 129, 0.4)',
+                            color: v.isApproved ? '#FCA5A5' : '#34D399',
+                            padding: '7px 12px',
+                            borderRadius: '8px',
+                            fontSize: '11.5px',
+                            fontWeight: 700,
+                            cursor: isLoading ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          {isLoading ? (
+                            <span>Updating...</span>
+                          ) : v.isApproved ? (
+                            <>
+                              <ShieldAlert size={14} />
+                              <span>Suspend Store</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck size={14} />
+                              <span>Verify Store (Grant Selling)</span>
+                            </>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

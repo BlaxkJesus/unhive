@@ -19,6 +19,8 @@ import {
   ShieldAlert,
   Receipt,
   Star,
+  Video,
+  UploadCloud,
 } from 'lucide-react';
 
 interface OrderTrackingProps {
@@ -53,8 +55,64 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeCategory, setDisputeCategory] = useState('wrong_item');
   const [disputeReason, setDisputeReason] = useState('');
+  const [buyerStatement, setBuyerStatement] = useState('');
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [videoValidationLoading, setVideoValidationLoading] = useState(false);
   const [submittingDispute, setSubmittingDispute] = useState(false);
   const [disputeError, setDisputeError] = useState<string | null>(null);
+
+  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('video/')) {
+      setDisputeError('Please select a valid video file.');
+      return;
+    }
+
+    setVideoValidationLoading(true);
+    setDisputeError(null);
+
+    const tempUrl = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    video.src = tempUrl;
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(tempUrl);
+      const duration = video.duration;
+      setVideoDuration(duration);
+      setVideoValidationLoading(false);
+
+      if (duration > 5.5) {
+        setDisputeError(
+          `Video evidence must be 5 seconds or shorter. Your video is ${duration.toFixed(1)} seconds. Please trim or record a clip under 5 seconds.`
+        );
+        setVideoUrl(null);
+        return;
+      }
+
+      // Convert to Base64 data URL
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setVideoUrl(uploadEvent.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(tempUrl);
+      setVideoValidationLoading(false);
+      setDisputeError('Could not process video file. Please try another video format (MP4/WebM).');
+    };
+  };
+
+  const handleUseDemoVideo = () => {
+    setVideoUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4');
+    setVideoDuration(4.5);
+    setDisputeError(null);
+  };
 
   // Courier Rating State & Modal
   const [ratingCourierModal, setRatingCourierModal] = useState<{
@@ -201,6 +259,8 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({
         {
           reason: disputeReason.trim(),
           issueCategory: categoryLabels[disputeCategory] || 'Inspection Issue',
+          videoUrl: videoUrl || undefined,
+          buyerStatement: buyerStatement.trim() || disputeReason.trim(),
         },
         token
       );
@@ -212,6 +272,8 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({
           status: 'disputed',
           dispute: {
             reason: `[${categoryLabels[disputeCategory] || 'Inspection Issue'}] ${disputeReason.trim()}`,
+            buyerStatement: buyerStatement.trim() || disputeReason.trim(),
+            videoUrl: videoUrl || undefined,
           },
         }));
         setRefreshKey((k) => k + 1);
@@ -1573,27 +1635,119 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({
             )}
           </div>
 
-          {/* Dispute & Inspection Complaint Action */}
-          <div style={{ textAlign: 'center', marginTop: '12px' }}>
-            <button
-              type="button"
-              onClick={() => setShowDisputeModal(true)}
+          {/* Active Dispute / Verdict Information Card */}
+          {currentStatus === 'disputed' ? (
+            <div
               style={{
-                background: 'none',
-                border: 'none',
-                color: '#EF4444',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
+                background: '#FEF2F2',
+                border: '1.5px solid #F87171',
+                borderRadius: '16px',
+                padding: '16px',
+                marginTop: '16px',
               }}
             >
-              <ShieldAlert size={14} color="#EF4444" />
-              <span>Problem with delivery? Lodge an Inspection Complaint</span>
-            </button>
-          </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldAlert size={18} color="#DC2626" />
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#991B1B' }}>
+                    Case File: Under Chief Proctor Mediation Desk
+                  </span>
+                </div>
+                <span style={{ fontSize: '10px', background: '#FEE2E2', color: '#B91C1C', padding: '3px 8px', borderRadius: '6px', fontWeight: 800 }}>
+                  Escrow Frozen 🔒
+                </span>
+              </div>
+
+              <p style={{ fontSize: '12px', color: '#7F1D1D', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+                <strong>Complaint Reason:</strong> {orderTracking?.dispute?.reason || orderTracking?.reason || 'Physical Inspection Failure'}
+              </p>
+
+              {/* Video Evidence Preview if Available */}
+              {(orderTracking?.dispute?.videoUrl || videoUrl) && (
+                <div style={{ marginBottom: '12px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #FECACA', background: '#000' }}>
+                  <video
+                    src={orderTracking?.dispute?.videoUrl || videoUrl!}
+                    controls
+                    playsInline
+                    style={{ width: '100%', maxHeight: '180px', display: 'block' }}
+                  />
+                  <div style={{ padding: '6px 10px', background: '#FFF1F2', fontSize: '11px', color: '#991B1B', fontWeight: 700 }}>
+                    🎥 5-Second Defect Video Transmitted to Admin Console
+                  </div>
+                </div>
+              )}
+
+              {/* Statements Comparison */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '10px' }}>
+                <div style={{ background: '#FFFFFF', border: '1px solid #FCA5A5', borderRadius: '10px', padding: '10px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#991B1B', display: 'block', marginBottom: '2px' }}>
+                    Buyer's Formal Statement:
+                  </span>
+                  <p style={{ fontSize: '12px', color: '#334155', margin: 0 }}>
+                    "{orderTracking?.dispute?.buyerStatement || orderTracking?.buyerStatement || disputeReason || 'Awaiting buyer statement.'}"
+                  </p>
+                </div>
+
+                <div style={{ background: '#FFFFFF', border: '1px solid #FCA5A5', borderRadius: '10px', padding: '10px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 800, color: '#991B1B', display: 'block', marginBottom: '2px' }}>
+                    Vendor's Statement:
+                  </span>
+                  <p style={{ fontSize: '12px', color: '#334155', margin: 0, fontStyle: (orderTracking?.dispute?.merchantStatement || orderTracking?.dispute?.vendorStatement) ? 'normal' : 'italic' }}>
+                    "{orderTracking?.dispute?.merchantStatement || orderTracking?.dispute?.vendorStatement || 'Merchant notified; awaiting vendor statement at Proctor Desk.'}"
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '11px', color: '#991B1B', background: '#FEE2E2', padding: '8px 12px', borderRadius: '8px' }}>
+                🛡️ <strong>Zero-Trust Protection:</strong> Your funds remain secured in the Paystack escrow vault until Chief Proctor Adeleke issues a signed verdict with rationale.
+              </div>
+            </div>
+          ) : currentStatus === 'refunded' ? (
+            <div
+              style={{
+                background: '#EFF6FF',
+                border: '1.5px solid #93C5FD',
+                borderRadius: '16px',
+                padding: '16px',
+                marginTop: '16px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <CheckCircle2 size={18} color="#2563EB" />
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E40AF' }}>
+                  Proctor Verdict: 100% Escrow Refund Issued
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#1E3A8A', margin: '0 0 6px 0' }}>
+                <strong>Proctor Verdict Statement:</strong> {orderTracking?.dispute?.resolutionNotes || orderTracking?.resolutionNotes || 'Refund authorized after inspection review.'}
+              </p>
+              <div style={{ fontSize: '11px', color: '#2563EB' }}>
+                ₦{Number(orderTracking?.escrow?.totalAmount || orderTracking?.totalAmount || orderTracking?.itemSubtotal || 18850).toLocaleString()} has been refunded back to your Paystack account.
+              </div>
+            </div>
+          ) : (
+            /* Dispute & Inspection Complaint Action */
+            <div style={{ textAlign: 'center', marginTop: '12px' }}>
+              <button
+                type="button"
+                onClick={() => setShowDisputeModal(true)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#EF4444',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <ShieldAlert size={14} color="#EF4444" />
+                <span>Problem with delivery? Lodge an Inspection Complaint</span>
+              </button>
+            </div>
+          )}
         </>
         )
       )}
@@ -2128,18 +2282,18 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({
                 </select>
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
+              <div style={{ marginBottom: '14px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#CBD5E1', marginBottom: '6px' }}>
-                  Detailed Explanation for Chief Proctor
+                  Detailed Explanation / Incident Summary
                 </label>
                 <textarea
-                  rows={4}
+                  rows={2}
                   value={disputeReason}
                   onChange={(e) => setDisputeReason(e.target.value)}
-                  placeholder="e.g. Shoes are size 40 EU instead of size 43 EU specified on the product page. Sole shows signs of wear."
+                  placeholder="e.g. Shoes are size 40 EU instead of size 43 EU specified on the product page."
                   style={{
                     width: '100%',
-                    padding: '12px',
+                    padding: '10px 12px',
                     borderRadius: '10px',
                     background: '#1E293B',
                     border: '1px solid #334155',
@@ -2150,6 +2304,148 @@ export const OrderTracking: React.FC<OrderTrackingProps> = ({
                     boxSizing: 'border-box',
                   }}
                 />
+              </div>
+
+              {/* Formal Buyer Statement */}
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#CBD5E1', marginBottom: '6px' }}>
+                  Buyer's Formal Statement for Mediation File
+                </label>
+                <textarea
+                  rows={3}
+                  value={buyerStatement}
+                  onChange={(e) => setBuyerStatement(e.target.value)}
+                  placeholder="State your account of what occurred at the Ground-Floor Porter Lodge during inspection..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: '#1E293B',
+                    border: '1px solid #334155',
+                    color: '#F8FAFC',
+                    fontSize: '13px',
+                    outline: 'none',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* 5-Second Video Evidence Upload */}
+              <div
+                style={{
+                  marginBottom: '16px',
+                  background: '#1E293B',
+                  border: '1px dashed #475569',
+                  borderRadius: '12px',
+                  padding: '14px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Video size={16} color="#F59E0B" />
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#F8FAFC' }}>
+                      Upload Video Evidence (Max 5 Seconds)
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '10px', color: '#F59E0B', background: 'rgba(245, 158, 11, 0.15)', padding: '2px 8px', borderRadius: '4px', fontWeight: 700 }}>
+                    Mandatory ≤ 5s Rule
+                  </span>
+                </div>
+
+                <p style={{ fontSize: '11px', color: '#94A3B8', margin: '0 0 10px 0' }}>
+                  Record a quick clip (up to 5 seconds) showing the defect, wrong size label, or packaging state at the porter desk.
+                </p>
+
+                {!videoUrl ? (
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <label
+                      style={{
+                        flex: '1',
+                        minWidth: '150px',
+                        background: '#0F172A',
+                        border: '1px solid #334155',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        textAlign: 'center',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        color: '#60A5FA',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <UploadCloud size={14} />
+                      <span>{videoValidationLoading ? 'Validating clip...' : 'Select Video (≤5s)'}</span>
+                      <input
+                        type="file"
+                        accept="video/*"
+                        capture="environment"
+                        onChange={handleVideoSelect}
+                        style={{ display: 'none' }}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleUseDemoVideo}
+                      style={{
+                        background: '#334155',
+                        border: '1px solid #475569',
+                        borderRadius: '8px',
+                        padding: '10px 14px',
+                        fontSize: '11px',
+                        color: '#F8FAFC',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      🎥 Use Demo 5s Clip
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #334155', background: '#000' }}>
+                    <video
+                      src={videoUrl}
+                      controls
+                      playsInline
+                      style={{ width: '100%', maxHeight: '160px', display: 'block' }}
+                    />
+                    <div
+                      style={{
+                        padding: '6px 12px',
+                        background: '#0F172A',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <span style={{ fontSize: '11px', color: '#10B981', fontWeight: 700 }}>
+                        ✓ Video Validated ({videoDuration?.toFixed(1) || '4.5'}s ≤ 5s)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoUrl(null);
+                          setVideoDuration(null);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#EF4444',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                        }}
+                      >
+                        Remove Clip
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {disputeError && (

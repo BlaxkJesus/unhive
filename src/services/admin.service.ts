@@ -211,6 +211,7 @@ export class AdminService {
         evidenceUrls: d.evidenceUrls && d.evidenceUrls.length > 0 ? d.evidenceUrls : [
           'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800'
         ],
+        videoUrl: d.videoUrl,
         buyerStatement: d.buyerStatement || d.reason,
         merchantStatement: d.merchantStatement || (vendor ? `Merchant '${vendor.businessName}' notified of dispute and awaiting proctor resolution.` : ''),
         courierNotes: d.courierNotes || (courierUser ? `Runner '${courierUser.fullName}' safely held package at ${hostel?.porterLodgeName || 'Porter Lodge'}.` : ''),
@@ -286,6 +287,10 @@ export class AdminService {
     const dispute = db.disputes.find((d) => d.id === params.disputeId);
     if (!dispute) {
       throw new Error('Dispute not found');
+    }
+
+    if (!params.resolutionNotes || typeof params.resolutionNotes !== 'string' || params.resolutionNotes.trim().length < 3) {
+      throw new Error('A proctor verdict statement explaining why this decision was reached is strictly required.');
     }
 
     const order = db.orders.find((o) => o.id === dispute.orderId);
@@ -408,6 +413,7 @@ export class AdminService {
       orderNumber: order.orderNumber,
       action: params.action,
       status: dispute.status,
+      resolutionNotes: dispute.resolutionNotes,
     });
 
     // Automated Transactional Email Alert to Vendor upon dispute resolution
@@ -762,7 +768,10 @@ ${welcomeMessage}
         totalProductsCount: products.length,
         activeProductsCount: products.filter((p) => p.isActive).length,
         isApproved: v.isApproved,
-        isSuspended: user?.isSuspended || false,
+        isSuspended: (user?.isSuspended || v.isSuspended) || false,
+        appealMessage: v.appealMessage,
+        appealSubmittedAt: v.appealSubmittedAt,
+        appealStatus: v.appealStatus,
       };
     });
   }
@@ -789,13 +798,127 @@ ${welcomeMessage}
       await db.saveUser(user);
     }
 
+    if (updates.isSuspended !== undefined) {
+      vendor.isSuspended = updates.isSuspended;
+      if (!updates.isSuspended) {
+        vendor.appealStatus = 'reviewed';
+      }
+    }
+
     await db.saveVendorProfile(vendor);
+
+    // Broadcast live vendor status changes to all connected consoles and Vendor Studio
+    broadcastAdminAlert('vendor:status_changed', {
+      vendorId: vendor.id,
+      userId: vendor.userId,
+      isSuspended: vendor.isSuspended || user?.isSuspended || false,
+      isApproved: vendor.isApproved,
+      appealStatus: vendor.appealStatus,
+    });
 
     return {
       success: true,
       vendorId: vendor.id,
       isApproved: vendor.isApproved,
-      isSuspended: user?.isSuspended || false,
+      isSuspended: (vendor.isSuspended || user?.isSuspended) || false,
+      appealStatus: vendor.appealStatus,
+    };
+  }
+
+  /**
+   * Option B2: Submit official appeal for a suspended vendor
+   */
+  static async submitVendorAppeal(params: {
+    vendorUserId: string;
+    appealMessage: string;
+  }) {
+    const vendor = db.vendorProfiles.find((v) => v.userId === params.vendorUserId);
+    if (!vendor) {
+      throw new Error('Vendor profile not found for this account.');
+    }
+
+    const user = db.users.find((u) => u.id === params.vendorUserId);
+    const submittedAt = new Date();
+
+    vendor.appealMessage = params.appealMessage.trim();
+    vendor.appealSubmittedAt = submittedAt;
+    vendor.appealStatus = 'pending';
+    await db.saveVendorProfile(vendor);
+
+    if (user) {
+      (user as any).appealMessage = params.appealMessage.trim();
+      (user as any).appealSubmittedAt = submittedAt;
+      (user as any).appealStatus = 'pending';
+      await db.saveUser(user);
+    }
+
+    // Broadcast alert to admin console
+    broadcastAdminAlert('admin:vendor_appeal_submitted', {
+      vendorId: vendor.id,
+      businessName: vendor.businessName,
+      appealMessage: vendor.appealMessage,
+      submittedAt: vendor.appealSubmittedAt,
+    });
+
+    // Broadcast to vendor session
+    broadcastAdminAlert('vendor:status_changed', {
+      vendorId: vendor.id,
+      userId: vendor.userId,
+      isSuspended: true,
+      appealStatus: 'pending',
+      appealMessage: vendor.appealMessage,
+    });
+
+    return {
+      success: true,
+      message: 'Official appeal submitted to Chief Proctor Desk',
+      appealStatus: 'pending',
+      appealMessage: vendor.appealMessage,
+      appealSubmittedAt: vendor.appealSubmittedAt,
+    };
+  }
+
+  /**
+   * Option B2: Submit vendor statement/defense in open dispute
+   */
+  static async submitVendorStatement(params: {
+    orderId?: string;
+    disputeId?: string;
+    vendorUserId: string;
+    statement: string;
+  }) {
+    const dispute = db.disputes.find(
+      (d) => d.id === params.disputeId || d.orderId === params.orderId
+    );
+    if (!dispute) {
+      throw new Error('Dispute case file not found.');
+    }
+
+    dispute.merchantStatement = params.statement.trim();
+    dispute.vendorStatement = params.statement.trim();
+    db.saveDispute(dispute);
+
+    const order = db.orders.find((o) => o.id === dispute.orderId);
+
+    if (order) {
+      broadcastOrderStatus(order.orderNumber, 'disputed', {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        status: 'disputed',
+        vendorStatement: dispute.merchantStatement,
+      });
+    }
+
+    broadcastAdminAlert('admin:dispute_updated', {
+      disputeId: dispute.id,
+      orderId: dispute.orderId,
+      merchantStatement: dispute.merchantStatement,
+    });
+
+    return {
+      success: true,
+      message: 'Vendor statement filed successfully.',
+      merchantStatement: dispute.merchantStatement,
     };
   }
 

@@ -2176,6 +2176,250 @@ describe('UniHive™ Core Architecture & Security Test Suite', () => {
       expect(relistRes.body.data.isActive).toBe(true);
     });
   });
+
+  describe('21. Dispute Short Video Evidence, Statements, Proctor Verdict Rationale & Vendor Suspension Appeals Suite', () => {
+    let buyerToken: string;
+    let vendorToken: string;
+    let adminToken: string;
+    let testOrder: any;
+
+    beforeAll(async () => {
+      // Login Buyer
+      const bRes = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ phoneOrEmail: '08123450001', password: 'unihive2026', role: 'buyer' });
+      buyerToken = bRes.body.data.token;
+
+      // Login Vendor
+      const vRes = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ phoneOrEmail: '08123450002', password: 'unihive2026', role: 'vendor' });
+      vendorToken = vRes.body.data.token;
+
+      // Login Admin with 2FA TOTP
+      const totpRes = await request(app).get('/api/v1/auth/demo-totp');
+      const aRes = await request(app)
+        .post('/api/v1/auth/login')
+        .send({
+          phoneOrEmail: 'admin@run.edu.ng',
+          password: 'unihive2026',
+          role: 'admin',
+          totpCode: totpRes.body.totp,
+        });
+      adminToken = aRes.body.data.token;
+    });
+
+    beforeEach(() => {
+      const buyer = db.users.find((u) => u.phone === '08123450001')!;
+      const vendor = db.vendorProfiles[0];
+      const campus = db.campuses[0];
+      const hostel = db.hostels[0];
+
+      testOrder = {
+        id: 'order-dispute-test-suite21',
+        orderNumber: 'RUN-DISPUTE-21',
+        campusId: campus.id,
+        buyerId: buyer.id,
+        vendorId: vendor.id,
+        status: 'at_porter_desk',
+        deliveryMethod: 'courier_runner',
+        dropoffHostelId: hostel.id,
+        dropoffRoom: 'Room 204',
+        contactPhone: buyer.phone,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      db.orders.push(testOrder);
+
+      const testEscrow = {
+        id: `escrow-${testOrder.id}`,
+        orderId: testOrder.id,
+        itemSubtotal: 15000,
+        courierDeliveryFee: 250,
+        platformTechFee: 100,
+        totalAmount: 15350,
+        paystackReference: `ref-${Date.now()}`,
+        paystackPaymentStatus: 'held_in_escrow' as const,
+        handshakePinHash: '$2a$08$testPinHash',
+        pinAttemptsCount: 0,
+        createdAt: new Date(),
+      };
+      db.escrows.push(testEscrow);
+    });
+
+    it('allows buyer to submit dispute with 5-second video evidence and formal statement', async () => {
+      const res = await request(app)
+        .post(`/api/v1/orders/${testOrder.id}/dispute`)
+        .set('Authorization', `Bearer ${buyerToken}`)
+        .send({
+          reason: 'Sneaker box contains EU 40 instead of EU 43 ordered',
+          issueCategory: 'Wrong Item / Incorrect Size',
+          videoUrl: 'https://example.com/videos/5sec-defect-proof.mp4',
+          buyerStatement: 'I unboxed the item in front of the Queen Esther hostel porter. The inner tag clearly says EU 40.',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.status).toBe('disputed');
+
+      // Verify dispute record in DB
+      const dispute = db.disputes.find((d) => d.orderId === testOrder.id);
+      expect(dispute).toBeDefined();
+      expect(dispute?.videoUrl).toBe('https://example.com/videos/5sec-defect-proof.mp4');
+      expect(dispute?.buyerStatement).toContain('unboxed the item in front of the Queen Esther hostel porter');
+    });
+
+    it('allows vendor to submit their formal defense statement for the dispute', async () => {
+      // Seed dispute for testOrder
+      db.disputes.push({
+        id: `dispute-${testOrder.id}`,
+        orderId: testOrder.id,
+        raisedByUserId: testOrder.buyerId,
+        reason: 'Sneaker box contains EU 40 instead of EU 43 ordered',
+        buyerStatement: 'I unboxed the item in front of the Queen Esther hostel porter.',
+        videoUrl: 'https://example.com/videos/5sec-defect-proof.mp4',
+        status: 'open',
+        createdAt: new Date(),
+      });
+      testOrder.status = 'disputed';
+
+      const res = await request(app)
+        .post(`/api/v1/orders/${testOrder.id}/dispute/vendor-statement`)
+        .set('Authorization', `Bearer ${vendorToken}`)
+        .send({
+          statement: 'Warehouse packed the wrong box by mistake. We have verified the correct size in stock or accept proctor refund.',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.merchantStatement).toContain('Warehouse packed the wrong box by mistake');
+
+      const dispute = db.disputes.find((d) => d.orderId === testOrder.id);
+      expect(dispute?.merchantStatement).toContain('Warehouse packed the wrong box by mistake');
+    });
+
+    it('admin mediation desk retrieves dispute with videoUrl, buyer statement, and vendor statement', async () => {
+      db.disputes.push({
+        id: `dispute-${testOrder.id}`,
+        orderId: testOrder.id,
+        raisedByUserId: testOrder.buyerId,
+        reason: 'Sneaker box contains EU 40 instead of EU 43 ordered',
+        buyerStatement: 'I unboxed the item in front of the Queen Esther hostel porter.',
+        merchantStatement: 'Warehouse packed the wrong box by mistake. We have verified the correct size in stock.',
+        videoUrl: 'https://example.com/videos/5sec-defect-proof.mp4',
+        status: 'open',
+        createdAt: new Date(),
+      });
+      testOrder.status = 'disputed';
+
+      const res = await request(app)
+        .get('/api/v1/admin/disputes')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      const caseFile = res.body.data.find((d: any) => d.orderId === testOrder.id);
+      expect(caseFile).toBeDefined();
+      expect(caseFile.videoUrl).toBe('https://example.com/videos/5sec-defect-proof.mp4');
+      expect(caseFile.buyerStatement).toBeDefined();
+      expect(caseFile.merchantStatement).toBeDefined();
+    });
+
+    it('admin requires mandatory verdict statement explaining why when resolving dispute', async () => {
+      const dispute: any = {
+        id: `dispute-${testOrder.id}`,
+        orderId: testOrder.id,
+        raisedByUserId: testOrder.buyerId,
+        reason: 'Sneaker box contains EU 40 instead of EU 43 ordered',
+        buyerStatement: 'I unboxed the item in front of the Queen Esther hostel porter.',
+        merchantStatement: 'Warehouse packed the wrong box by mistake.',
+        videoUrl: 'https://example.com/videos/5sec-defect-proof.mp4',
+        status: 'open',
+        createdAt: new Date(),
+      };
+      db.disputes.push(dispute);
+      testOrder.status = 'disputed';
+
+      // Reject empty rationale statement
+      const failRes = await request(app)
+        .post(`/api/v1/admin/disputes/${dispute.id}/resolve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          action: 'refund_buyer',
+          resolutionNotes: '',
+        });
+
+      expect(failRes.status).toBe(400);
+      expect(failRes.body.message).toContain('verdict statement explaining why this decision was reached is strictly required');
+
+      // Resolve successfully with comprehensive rationale statement
+      const successRes = await request(app)
+        .post(`/api/v1/admin/disputes/${dispute.id}/resolve`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          action: 'refund_buyer',
+          resolutionNotes: 'Physical 5-second video inspection verified wrong size EU 40. Vendor acknowledged error in statement. 100% Paystack refund authorized.',
+        });
+
+      expect(successRes.status).toBe(200);
+      expect(successRes.body.success).toBe(true);
+      expect(dispute.status).toBe('refunded');
+      expect(dispute.resolutionNotes).toContain('Physical 5-second video inspection verified wrong size EU 40');
+    });
+
+    it('supports vendor suspension, official appeal submission, and proctor reinstatement', async () => {
+      const vendor = db.vendorProfiles[0];
+
+      // 1. Admin suspends vendor
+      const suspendRes = await request(app)
+        .post(`/api/v1/admin/vendors/${vendor.id}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ isApproved: false, isSuspended: true });
+
+      expect(suspendRes.status).toBe(200);
+      expect(suspendRes.body.data.isSuspended).toBe(true);
+
+      // 2. Suspended vendor checks profile & sees isSuspended: true
+      const profileRes = await request(app)
+        .get('/api/v1/vendor/profile')
+        .set('Authorization', `Bearer ${vendorToken}`);
+
+      expect(profileRes.status).toBe(200);
+      expect(profileRes.body.data.isSuspended).toBe(true);
+
+      // 3. Suspended vendor submits official appeal
+      const appealRes = await request(app)
+        .post('/api/v1/vendor/appeal')
+        .set('Authorization', `Bearer ${vendorToken}`)
+        .send({
+          appealMessage: 'We have updated our campus fulfillment protocols to prevent wrong sizing. We request immediate reinstatement.',
+        });
+
+      expect(appealRes.status).toBe(200);
+      expect(appealRes.body.success).toBe(true);
+      expect(appealRes.body.appealStatus).toBe('pending');
+
+      // 4. Admin console sees appeal in vendor list
+      const adminVendorsRes = await request(app)
+        .get('/api/v1/admin/vendors')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      const reviewedVendor = adminVendorsRes.body.data.find((v: any) => v.id === vendor.id);
+      expect(reviewedVendor.isSuspended).toBe(true);
+      expect(reviewedVendor.appealStatus).toBe('pending');
+      expect(reviewedVendor.appealMessage).toContain('updated our campus fulfillment protocols');
+
+      // 5. Admin reviews appeal and reinstates vendor with one-click
+      const reinstateRes = await request(app)
+        .post(`/api/v1/admin/vendors/${vendor.id}/reinstate`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(reinstateRes.status).toBe(200);
+      expect(reinstateRes.body.success).toBe(true);
+      expect(reinstateRes.body.data.isSuspended).toBe(false);
+      expect(reinstateRes.body.data.isApproved).toBe(true);
+    });
+  });
 });
 
 
