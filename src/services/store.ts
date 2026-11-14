@@ -250,6 +250,43 @@ export interface EmailVerificationOtp {
   createdAt: Date;
 }
 
+export interface CampusPolicyEntity {
+  id: string;
+  campusId: string;
+  curfewHourStart: number; // default 21 (9:00 PM)
+  curfewMinuteStart: number; // default 0
+  curfewHourEnd: number; // default 8 (8:00 AM Mon-Sat)
+  curfewSundayHourEnd: number; // default 10 (10:00 AM Sun)
+  isCurfewActiveOverride: boolean; // proctor emergency curfew lockdown toggle
+  porterLodgeOnly: boolean; // ground-floor porter lodge desk only
+  baseCourierFee: number; // default 250
+  platformTechFee: number; // default 100
+  noticeMessage?: string;
+  updatedAt: Date;
+}
+
+export interface AdminAuditLogEntity {
+  id: string;
+  actionType:
+    | 'DISPUTE_VERDICT'
+    | 'VENDOR_SUSPENDED'
+    | 'VENDOR_REINSTATED'
+    | 'COURIER_PROVISIONED'
+    | 'COURIER_STATUS_CHANGED'
+    | 'PRODUCT_MODERATED'
+    | 'PIN_LOCKOUT_OVERRIDE'
+    | 'CAMPUS_POLICY_UPDATED'
+    | 'CURFEW_OVERRIDE_TOGGLED'
+    | 'BURSARY_BATCH_RECONCILED';
+  proctorId?: string;
+  proctorName: string;
+  targetEntity: 'order' | 'vendor' | 'courier' | 'product' | 'campus_policy' | 'escrow' | 'general';
+  targetId?: string;
+  summary: string;
+  details?: string;
+  createdAt: Date;
+}
+
 export class UniHiveStore {
   campuses: CampusEntity[] = [];
   hostels: HostelEntity[] = [];
@@ -264,6 +301,8 @@ export class UniHiveStore {
   notifications: NotificationEntity[] = [];
   verificationOtps: EmailVerificationOtp[] = [];
   vendorPayoutAccounts: VendorPayoutAccountEntity[] = [];
+  campusPolicies: CampusPolicyEntity[] = [];
+  adminAuditLogs: AdminAuditLogEntity[] = [];
 
   constructor() {
     this.seedDefaultData();
@@ -563,6 +602,52 @@ export class UniHiveStore {
     this.payouts = [];
     this.disputes = [];
     this.notifications = [];
+
+    // Option C: Campus Policies & Curfew Engine defaults
+    this.campusPolicies = [
+      {
+        id: 'policy-run-ede',
+        campusId: runId,
+        curfewHourStart: 21,
+        curfewMinuteStart: 0,
+        curfewHourEnd: 8,
+        curfewSundayHourEnd: 10,
+        isCurfewActiveOverride: false,
+        porterLodgeOnly: true,
+        baseCourierFee: 250,
+        platformTechFee: 100,
+        noticeMessage: 'Deliveries close at 9:00 PM daily. Resumes 8:00 AM (10:00 AM Sundays) at porter lodges.',
+        updatedAt: new Date(),
+      },
+      {
+        id: 'policy-bowen-iwo',
+        campusId: bowenId,
+        curfewHourStart: 21,
+        curfewMinuteStart: 0,
+        curfewHourEnd: 8,
+        curfewSundayHourEnd: 10,
+        isCurfewActiveOverride: false,
+        porterLodgeOnly: true,
+        baseCourierFee: 250,
+        platformTechFee: 100,
+        noticeMessage: 'Deliveries close at 9:00 PM daily. Resumes 8:00 AM (10:00 AM Sundays).',
+        updatedAt: new Date(),
+      },
+    ];
+
+    this.adminAuditLogs = [
+      {
+        id: 'audit-init-policy',
+        actionType: 'CAMPUS_POLICY_UPDATED',
+        proctorId: 'user-run-admin-1',
+        proctorName: 'Chief Proctor',
+        targetEntity: 'campus_policy',
+        targetId: 'campus-run-ede',
+        summary: "Enforced Redeemer's University 9:00 PM Curfew Window & Ground-Floor Porter Desk drop-off policy",
+        details: 'Curfew starts 21:00. Resumption set to 08:00 (Mon-Sat) and 10:00 (Sun). Zero-Room-Entry policy enabled.',
+        createdAt: new Date(Date.now() - 3600 * 1000 * 24),
+      },
+    ];
   }
 
   /**
@@ -1135,6 +1220,335 @@ export class UniHiveStore {
     }
 
     return true;
+  }
+
+  getCampusPolicy(campusId: string): CampusPolicyEntity {
+    let policy = this.campusPolicies.find((p) => p.campusId === campusId);
+    if (!policy) {
+      policy = {
+        id: `policy-${campusId}`,
+        campusId,
+        curfewHourStart: 21,
+        curfewMinuteStart: 0,
+        curfewHourEnd: 8,
+        curfewSundayHourEnd: 10,
+        isCurfewActiveOverride: false,
+        porterLodgeOnly: true,
+        baseCourierFee: 250,
+        platformTechFee: 100,
+        noticeMessage: 'Deliveries close at 9:00 PM daily. Resumes 8:00 AM (10:00 AM Sundays).',
+        updatedAt: new Date(),
+      };
+      this.campusPolicies.push(policy);
+    }
+    return policy;
+  }
+
+  updateCampusPolicy(campusId: string, updates: Partial<CampusPolicyEntity>): CampusPolicyEntity {
+    const policy = this.getCampusPolicy(campusId);
+    Object.assign(policy, updates, { updatedAt: new Date() });
+    return policy;
+  }
+
+  checkCurfewStatus(campusId: string, customDate?: Date): {
+    isCurfewActive: boolean;
+    curfewReason: string;
+    resumesAtText: string;
+    nextResumptionTime: Date;
+    isProctorOverride: boolean;
+    canCouriersAccept: boolean;
+    curfewStartHour: number;
+    weekdayEndHour: number;
+    sundayEndHour: number;
+  } {
+    const policy = this.getCampusPolicy(campusId);
+    const date = customDate || new Date();
+
+    if (policy.isCurfewActiveOverride) {
+      const nextResumption = new Date(date);
+      nextResumption.setHours(policy.curfewHourEnd, 0, 0, 0);
+      if (nextResumption <= date) {
+        nextResumption.setDate(nextResumption.getDate() + 1);
+      }
+      return {
+        isCurfewActive: true,
+        curfewReason: 'Emergency Proctor Curfew Lockdown in effect.',
+        resumesAtText: `Resumes tomorrow at ${policy.curfewHourEnd}:00 AM upon proctor clearance`,
+        nextResumptionTime: nextResumption,
+        isProctorOverride: true,
+        canCouriersAccept: false,
+        curfewStartHour: policy.curfewHourStart,
+        weekdayEndHour: policy.curfewHourEnd,
+        sundayEndHour: policy.curfewSundayHourEnd,
+      };
+    }
+
+    const day = date.getDay(); // 0 = Sunday, 1..6 = Mon..Sat
+    const hour = date.getHours();
+    const minute = date.getMinutes();
+    const startHour = policy.curfewHourStart; // default 21 (9:00 PM)
+    const startMinute = policy.curfewMinuteStart; // default 0
+    const weekdayEnd = policy.curfewHourEnd; // default 8 (8:00 AM)
+    const sundayEnd = policy.curfewSundayHourEnd; // default 10 (10:00 AM)
+
+    let isCurfew = false;
+    let resumesAtText = '';
+    const nextResumption = new Date(date);
+
+    // Evening: past or at start time (e.g. 21:00)
+    if (hour > startHour || (hour === startHour && minute >= startMinute)) {
+      isCurfew = true;
+      const tomorrowIsSunday = day === 6;
+      const targetHour = tomorrowIsSunday ? sundayEnd : weekdayEnd;
+      nextResumption.setDate(nextResumption.getDate() + 1);
+      nextResumption.setHours(targetHour, 0, 0, 0);
+      resumesAtText = tomorrowIsSunday
+        ? `Tomorrow (Sunday) at ${sundayEnd}:00 AM`
+        : `Tomorrow morning at ${weekdayEnd}:00 AM`;
+    }
+    // Early morning before opening (Sunday until 10:00 AM, Weekdays until 8:00 AM)
+    else if (day === 0 && hour < sundayEnd) {
+      isCurfew = true;
+      nextResumption.setHours(sundayEnd, 0, 0, 0);
+      resumesAtText = `Today (Sunday) at ${sundayEnd}:00 AM`;
+    } else if (day !== 0 && hour < weekdayEnd) {
+      isCurfew = true;
+      nextResumption.setHours(weekdayEnd, 0, 0, 0);
+      resumesAtText = `Today at ${weekdayEnd}:00 AM`;
+    } else {
+      isCurfew = false;
+      resumesAtText = 'Deliveries currently open (9:00 PM cutoff tonight)';
+    }
+
+    return {
+      isCurfewActive: isCurfew,
+      curfewReason: isCurfew
+        ? `Campus Curfew Active (${startHour > 12 ? startHour - 12 : startHour}:00 PM Cutoff). Deliveries resume ${resumesAtText}.`
+        : 'Deliveries open',
+      resumesAtText,
+      nextResumptionTime: nextResumption,
+      isProctorOverride: false,
+      canCouriersAccept: !isCurfew,
+      curfewStartHour: startHour,
+      weekdayEndHour: weekdayEnd,
+      sundayEndHour: sundayEnd,
+    };
+  }
+
+  logAdminAudit(log: Omit<AdminAuditLogEntity, 'id' | 'createdAt'>): AdminAuditLogEntity {
+    const entry: AdminAuditLogEntity = {
+      id: `audit-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      actionType: log.actionType,
+      proctorId: log.proctorId,
+      proctorName: log.proctorName || 'Chief Proctor',
+      targetEntity: log.targetEntity,
+      targetId: log.targetId,
+      summary: log.summary,
+      details: log.details,
+      createdAt: new Date(),
+    };
+    this.adminAuditLogs.unshift(entry);
+    return entry;
+  }
+
+  getAdminAuditLogs(filters?: { actionType?: string; proctorId?: string; search?: string }): AdminAuditLogEntity[] {
+    let logs = [...this.adminAuditLogs];
+    if (filters?.actionType && filters.actionType !== 'all') {
+      logs = logs.filter((l) => l.actionType === filters.actionType);
+    }
+    if (filters?.proctorId) {
+      logs = logs.filter((l) => l.proctorId === filters.proctorId);
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      logs = logs.filter(
+        (l) =>
+          l.summary.toLowerCase().includes(q) ||
+          (l.details && l.details.toLowerCase().includes(q)) ||
+          l.proctorName.toLowerCase().includes(q) ||
+          (l.targetId && l.targetId.toLowerCase().includes(q))
+      );
+    }
+    return logs;
+  }
+
+  seedTemporaryDummyTransactions(campusId: string = 'campus-run-ede') {
+    // Prevent duplicate seeding
+    this.clearTemporaryDummyTransactions();
+
+    const joshuaHostelId = 'hostel-run-joshua';
+    const estherHostelId = 'hostel-run-queen-esther';
+    const vendor = this.vendorProfiles.find((v) => v.campusId === campusId) || this.vendorProfiles[0];
+    const buyer = this.users.find((u) => u.roles.includes('buyer')) || this.users[0];
+    const courier = this.courierProfiles.find((c) => c.campusId === campusId) || this.courierProfiles[0];
+
+    // 1. Settled Order (Reconciled with 3-way split)
+    const settledOrder: OrderEntity = {
+      id: 'order-temp-settled-1',
+      orderNumber: 'RUN-TEMP-7701',
+      campusId,
+      buyerId: buyer.id,
+      vendorId: vendor.id,
+      courierId: courier?.id,
+      status: 'inspected_completed',
+      deliveryMethod: 'courier_runner',
+      deliveryMode: 'batch',
+      packageTag: 'RUN-T7701',
+      masterOrderNumber: 'RUN-TEMP-7701',
+      dropoffHostelId: estherHostelId,
+      dropoffRoom: 'Block B, Room 204',
+      contactPhone: '08143829101',
+      specialInstructions: 'Leave package at Queen Esther Hall ground-floor porter desk',
+      createdAt: new Date(Date.now() - 4 * 3600 * 1000),
+      updatedAt: new Date(Date.now() - 3 * 3600 * 1000),
+    };
+    const settledEscrow: OrderEscrowEntity = {
+      id: 'escrow-temp-settled-1',
+      orderId: settledOrder.id,
+      itemSubtotal: 15000,
+      courierDeliveryFee: 250,
+      platformTechFee: 100,
+      totalAmount: 15350,
+      paystackReference: 'pstk_temp_ref_7701',
+      paystackPaymentStatus: 'settled',
+      handshakePinHash: 'temp_hash',
+      plainPinForDev: '4821',
+      pinAttemptsCount: 1,
+      pinVerifiedAt: new Date(Date.now() - 3 * 3600 * 1000),
+      settledAt: new Date(Date.now() - 3 * 3600 * 1000),
+      createdAt: new Date(Date.now() - 4 * 3600 * 1000),
+    };
+    const vendorPayout: PayoutTransactionEntity = {
+      id: 'payout-temp-vendor-1',
+      orderId: settledOrder.id,
+      recipientType: 'vendor',
+      recipientUserId: vendor.userId,
+      amount: 15000,
+      paystackTransferCode: 'TRF_temp_vnd_7701',
+      status: 'success',
+      transferredAt: new Date(Date.now() - 3 * 3600 * 1000),
+    };
+    const courierPayout: PayoutTransactionEntity = {
+      id: 'payout-temp-courier-1',
+      orderId: settledOrder.id,
+      recipientType: 'courier',
+      recipientUserId: courier?.userId,
+      amount: 250,
+      paystackTransferCode: 'TRF_temp_cur_7701',
+      status: 'success',
+      transferredAt: new Date(Date.now() - 3 * 3600 * 1000),
+    };
+    const platformPayout: PayoutTransactionEntity = {
+      id: 'payout-temp-platform-1',
+      orderId: settledOrder.id,
+      recipientType: 'platform',
+      amount: 100,
+      paystackTransferCode: 'TRF_temp_plt_7701',
+      status: 'success',
+      transferredAt: new Date(Date.now() - 3 * 3600 * 1000),
+    };
+
+    // 2. In-Transit Order (Escrow Locked in Vault)
+    const inTransitOrder: OrderEntity = {
+      id: 'order-temp-transit-2',
+      orderNumber: 'RUN-TEMP-7702',
+      campusId,
+      buyerId: buyer.id,
+      vendorId: vendor.id,
+      courierId: courier?.id,
+      status: 'in_transit',
+      deliveryMethod: 'courier_runner',
+      deliveryMode: 'batch',
+      packageTag: 'RUN-T7702',
+      masterOrderNumber: 'RUN-TEMP-7702',
+      dropoffHostelId: joshuaHostelId,
+      dropoffRoom: 'Wing A, Room 102',
+      contactPhone: '08129847192',
+      specialInstructions: 'Runner heading to Joshua Hall ground-floor porter lodge',
+      createdAt: new Date(Date.now() - 45 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 20 * 60 * 1000),
+    };
+    const inTransitEscrow: OrderEscrowEntity = {
+      id: 'escrow-temp-transit-2',
+      orderId: inTransitOrder.id,
+      itemSubtotal: 8500,
+      courierDeliveryFee: 250,
+      platformTechFee: 100,
+      totalAmount: 8850,
+      paystackReference: 'pstk_temp_ref_7702',
+      paystackPaymentStatus: 'held_in_escrow',
+      handshakePinHash: 'temp_hash_2',
+      plainPinForDev: '9134',
+      pinAttemptsCount: 0,
+      createdAt: new Date(Date.now() - 45 * 60 * 1000),
+    };
+
+    // 3. Night Order Queued for Morning Dispatch (Curfew Active Notice)
+    const nightOrder: OrderEntity = {
+      id: 'order-temp-curfew-3',
+      orderNumber: 'RUN-TEMP-7703',
+      campusId,
+      buyerId: buyer.id,
+      vendorId: vendor.id,
+      status: 'vendor_preparing',
+      deliveryMethod: 'courier_runner',
+      deliveryMode: 'batch',
+      packageTag: 'RUN-T7703',
+      masterOrderNumber: 'RUN-TEMP-7703',
+      dropoffHostelId: estherHostelId,
+      dropoffRoom: 'Block C, Room 310',
+      contactPhone: '08033991823',
+      specialInstructions: '[Night Order] Scheduled for morning delivery window (Resumes at 8:00 AM / 10:00 AM on Sundays)',
+      createdAt: new Date(Date.now() - 15 * 60 * 1000),
+      updatedAt: new Date(Date.now() - 15 * 60 * 1000),
+    };
+    const nightEscrow: OrderEscrowEntity = {
+      id: 'escrow-temp-curfew-3',
+      orderId: nightOrder.id,
+      itemSubtotal: 12000,
+      courierDeliveryFee: 250,
+      platformTechFee: 100,
+      totalAmount: 12350,
+      paystackReference: 'pstk_temp_ref_7703',
+      paystackPaymentStatus: 'held_in_escrow',
+      handshakePinHash: 'temp_hash_3',
+      plainPinForDev: '6520',
+      pinAttemptsCount: 0,
+      createdAt: new Date(Date.now() - 15 * 60 * 1000),
+    };
+
+    this.orders.unshift(settledOrder, inTransitOrder, nightOrder);
+    this.escrows.unshift(settledEscrow, inTransitEscrow, nightEscrow);
+    this.payouts.unshift(vendorPayout, courierPayout, platformPayout);
+
+    this.logAdminAudit({
+      actionType: 'BURSARY_BATCH_RECONCILED',
+      proctorId: 'user-run-admin-1',
+      proctorName: 'Chief Proctor',
+      targetEntity: 'escrow',
+      targetId: 'RUN-TEMP-7701',
+      summary: 'Reconciled Paystack Batch ₦15,350: Vendor ₦15,000 | Courier ₦250 | Tech Fee ₦100',
+      details: 'Automated escrow split verified at Queen Esther Hall desk.',
+    });
+
+    return {
+      message: 'Temporary dummy transactions successfully generated for testing Option C.',
+      ordersCount: 3,
+      payoutsCount: 3,
+    };
+  }
+
+  clearTemporaryDummyTransactions() {
+    this.orders = this.orders.filter((o) => !o.id.startsWith('order-temp-'));
+    this.escrows = this.escrows.filter((e) => !e.id.startsWith('escrow-temp-'));
+    this.payouts = this.payouts.filter((p) => !p.id.startsWith('payout-temp-'));
+    this.disputes = this.disputes.filter((d) => !d.id.startsWith('dispute-temp-'));
+    this.adminAuditLogs = this.adminAuditLogs.filter(
+      (l) => !l.targetId?.startsWith('RUN-TEMP-') && !l.summary?.includes('RUN-TEMP-')
+    );
+    return {
+      message: 'All temporary dummy transactions cleanly deleted.',
+    };
   }
 }
 

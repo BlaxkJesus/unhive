@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export async function apiRequest<T = any>(
   endpoint: string,
@@ -289,6 +289,48 @@ export const API = {
     apiRequest(`/admin/products/${productId}/moderate`, {
       method: 'POST',
       body: JSON.stringify(payload),
+      token,
+    }),
+
+  // Option C: Enterprise Operations & Command Center
+  getCampusPolicy: (campusId: string, token: string) =>
+    apiRequest(`/admin/campus-policies/${encodeURIComponent(campusId)}`, { token }),
+  updateCampusPolicy: (campusId: string, updates: any, token: string) =>
+    apiRequest(`/admin/campus-policies/${encodeURIComponent(campusId)}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+      token,
+    }),
+  getPublicCurfewStatus: (campusId: string) =>
+    apiRequest(`/campuses/${encodeURIComponent(campusId)}/curfew-status`),
+  getPublicCampusPolicy: (campusId: string) =>
+    apiRequest(`/campuses/${encodeURIComponent(campusId)}/policy`),
+  toggleCurfewOverride: (campusId: string, isOverride: boolean, token: string) =>
+    apiRequest('/admin/curfew-override', {
+      method: 'POST',
+      body: JSON.stringify({ campusId, isOverride }),
+      token,
+    }),
+  getAuditLogs: (token: string, filters?: { actionType?: string; search?: string }) => {
+    const sp = new URLSearchParams();
+    if (filters?.actionType && filters.actionType !== 'all') sp.append('actionType', filters.actionType);
+    if (filters?.search) sp.append('search', filters.search);
+    const qs = sp.toString();
+    return apiRequest(`/admin/audit-logs${qs ? `?${qs}` : ''}`, { token });
+  },
+  getReconciliation: (token: string, campusId?: string) =>
+    apiRequest(`/admin/reconciliation${campusId ? `?campusId=${encodeURIComponent(campusId)}` : ''}`, { token }),
+  getTelemetry: (token: string, campusId?: string) =>
+    apiRequest(`/admin/telemetry${campusId ? `?campusId=${encodeURIComponent(campusId)}` : ''}`, { token }),
+  seedTemporaryDummyTransactions: (campusId: string, token: string) =>
+    apiRequest('/admin/demo/seed-temporary-transactions', {
+      method: 'POST',
+      body: JSON.stringify({ campusId }),
+      token,
+    }),
+  clearTemporaryDummyTransactions: (token: string) =>
+    apiRequest('/admin/demo/clear-temporary-transactions', {
+      method: 'POST',
       token,
     }),
 

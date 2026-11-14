@@ -36,6 +36,7 @@ export const CourierPortal: React.FC = () => {
   const [availableDeliveries, setAvailableDeliveries] = useState<any[]>([]);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
   const [newOrderAlert, setNewOrderAlert] = useState<string | null>(null);
+  const [curfewStatus, setCurfewStatus] = useState<any>(null);
 
   // PIN verification state
   const [enteredPin, setEnteredPin] = useState(['', '', '', '']);
@@ -229,11 +230,23 @@ export const CourierPortal: React.FC = () => {
     }
   };
 
+  const fetchCurfew = async () => {
+    try {
+      const res = await API.getPublicCurfewStatus(currentCampus?.id || 'campus-run-ede');
+      if (res?.data) {
+        setCurfewStatus(res.data);
+      }
+    } catch (e) {
+      console.warn('Could not load curfew in courier portal', e);
+    }
+  };
+
   useEffect(() => {
     fetchAvailable();
     fetchActiveJob();
     fetchCourierStats();
     fetchCompletedRuns();
+    fetchCurfew();
   }, [token, currentCampus]);
 
 
@@ -312,6 +325,14 @@ export const CourierPortal: React.FC = () => {
   // Courier claims delivery from available pool
   const handleClaimRun = async (delivery: any) => {
     if (!token) return;
+
+    if (curfewStatus?.isCurfewActive) {
+      alert(
+        `🌙 Campus Curfew Active (9:00 PM Cutoff).\n\nCouriers cannot accept delivery jobs during curfew hours per university residence hall security rules.\n\nDispatch resumes ${curfewStatus.resumesAtText || 'at 8:00 AM (10:00 AM on Sundays)'}.`
+      );
+      return;
+    }
+
     setLoading(true);
     try {
       await API.acceptDelivery(delivery.orderId, token);
@@ -801,6 +822,26 @@ export const CourierPortal: React.FC = () => {
           </button>
         </div>
 
+        {/* Option C: Curfew Lockout Alert for Couriers */}
+        {curfewStatus?.isCurfewActive && (
+          <div
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1.5px solid #EF4444',
+              borderRadius: '10px',
+              padding: '12px 14px',
+              marginBottom: '12px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#EF4444', fontWeight: 800, fontSize: '12.5px' }}>
+              <span>🌙 Campus Curfew Lockout Active (9:00 PM Cutoff)</span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '11.5px', color: '#F87171', lineHeight: 1.4 }}>
+              Courier dispatches are paused during night curfew hours per university hall rules. Delivery acceptance resumes at <strong>8:00 AM (10:00 AM on Sundays)</strong>.
+            </p>
+          </div>
+        )}
+
         {availableDeliveries.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '20px 10px', color: '#94A3B8', fontSize: '12px' }}>
             No pending runs waiting for pickup right now. You'll be notified automatically when an order is placed!
@@ -876,21 +917,25 @@ export const CourierPortal: React.FC = () => {
 
                 <button
                   onClick={() => handleClaimRun(delivery)}
-                  disabled={loading}
+                  disabled={loading || curfewStatus?.isCurfewActive}
                   style={{
                     padding: '10px 16px',
                     borderRadius: '8px',
                     border: 'none',
-                    background: '#059669',
+                    background: curfewStatus?.isCurfewActive ? '#64748B' : '#059669',
                     color: '#FFFFFF',
                     fontSize: '12px',
                     fontWeight: 800,
-                    cursor: 'pointer',
+                    cursor: curfewStatus?.isCurfewActive ? 'not-allowed' : 'pointer',
                     whiteSpace: 'nowrap',
-                    boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)',
+                    boxShadow: curfewStatus?.isCurfewActive ? 'none' : '0 2px 8px rgba(5, 150, 105, 0.25)',
+                    opacity: curfewStatus?.isCurfewActive ? 0.75 : 1,
                   }}
+                  title={curfewStatus?.isCurfewActive ? 'Dispatch paused due to campus curfew rules' : undefined}
                 >
-                  Claim Run & Earn ₦{(delivery.payoutForCourier ?? delivery.courierFee ?? 500).toLocaleString()}
+                  {curfewStatus?.isCurfewActive
+                    ? '🔒 Curfew Lockout (8:00 AM)'
+                    : `Claim Run & Earn ₦${(delivery.payoutForCourier ?? delivery.courierFee ?? 500).toLocaleString()}`}
                 </button>
               </div>
             ))}

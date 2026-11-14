@@ -7,6 +7,9 @@ import { UniHiveLogo } from '../../components/common/UniHiveLogo';
 import { API } from '../../config/api';
 import { DisputeMediationDesk } from './DisputeMediationDesk';
 import { FleetAndMerchantDesk } from './FleetAndMerchantDesk';
+import { CampusRulesTab } from './CampusRulesTab';
+import { BursaryReconciliationTab } from './BursaryReconciliationTab';
+import { ProctorAuditLogTab } from './ProctorAuditLogTab';
 import {
   ShieldCheck,
   Lock,
@@ -26,6 +29,9 @@ import {
   MessageSquare,
   LogOut,
   MapPin,
+  Clock,
+  Trash2,
+  Zap,
 } from 'lucide-react';
 
 export const AdminConsole: React.FC = () => {
@@ -35,8 +41,10 @@ export const AdminConsole: React.FC = () => {
   const { isMobile } = useResponsive();
 
   const [activeAdminTab, setActiveAdminTab] = useState<
-    'overview' | 'disputes' | 'fleet' | 'stores' | 'products' | 'stream' | 'payouts'
+    'overview' | 'disputes' | 'fleet' | 'stores' | 'products' | 'stream' | 'payouts' | 'rules' | 'bursary' | 'audit'
   >('overview');
+
+  const [testActionLoading, setTestActionLoading] = useState(false);
 
   const [stats, setStats] = useState<any>({
     kpis: {
@@ -82,6 +90,38 @@ export const AdminConsole: React.FC = () => {
     setProvisionSuccessData(null);
     setCopiedCredentials(false);
     setIsProvisionModalOpen(false);
+  };
+
+  const handleSeedTemporaryDummy = async () => {
+    if (!token) return;
+    setTestActionLoading(true);
+    try {
+      const res = await API.seedTemporaryDummyTransactions(currentCampus?.id || 'campus-run-ede', token);
+      if (res) {
+        setResolutionMessage('✓ Temporary test dummy transactions generated! You can test Bursary Reconciliation, Dispatch Stream & Curfew. Remember to delete before GitHub push.');
+        loadAdminData();
+      }
+    } catch (err: any) {
+      setResolutionMessage(`❌ Seeding failed: ${err.message}`);
+    } finally {
+      setTestActionLoading(false);
+    }
+  };
+
+  const handleClearTemporaryDummy = async () => {
+    if (!token) return;
+    setTestActionLoading(true);
+    try {
+      const res = await API.clearTemporaryDummyTransactions(token);
+      if (res) {
+        setResolutionMessage('✓ All temporary dummy test transactions completely deleted.');
+        loadAdminData();
+      }
+    } catch (err: any) {
+      setResolutionMessage(`❌ Purge failed: ${err.message}`);
+    } finally {
+      setTestActionLoading(false);
+    }
   };
 
   const handleProvisionRunner = async (e: React.FormEvent) => {
@@ -999,6 +1039,9 @@ export const AdminConsole: React.FC = () => {
             { id: 'products', label: `Products (${products.length})` },
             { id: 'stream', label: `Stream (${stream.length})` },
             { id: 'payouts', label: 'Payouts' },
+            { id: 'rules', label: 'Curfew & Rules' },
+            { id: 'bursary', label: 'Bursary' },
+            { id: 'audit', label: 'Audit Trail' },
           ].map((tab) => {
             const isActive = activeAdminTab === tab.id;
             return (
@@ -1196,6 +1239,23 @@ export const AdminConsole: React.FC = () => {
               )}
             </div>
           </div>
+        ) : activeAdminTab === 'rules' ? (
+          <CampusRulesTab
+            campusId={currentCampus?.id || 'campus-run-ede'}
+            token={token!}
+            onAlert={(msg) => setResolutionMessage(msg)}
+          />
+        ) : activeAdminTab === 'bursary' ? (
+          <BursaryReconciliationTab
+            campusId={currentCampus?.id || 'campus-run-ede'}
+            token={token!}
+            onAlert={(msg) => setResolutionMessage(msg)}
+          />
+        ) : activeAdminTab === 'audit' ? (
+          <ProctorAuditLogTab
+            token={token!}
+            onAlert={(msg) => setResolutionMessage(msg)}
+          />
         ) : (
           <>
 
@@ -1763,6 +1823,9 @@ export const AdminConsole: React.FC = () => {
           { id: 'products', label: `Product Moderation (${products.length} Items)` },
           { id: 'stream', label: `Campus Dispatch Stream (${stream.length} Active)` },
           { id: 'payouts', label: 'Atomic Escrow Payout Ledger' },
+          { id: 'rules', label: 'Campus Policies & Curfew Engine' },
+          { id: 'bursary', label: 'Bursary Reconciliation' },
+          { id: 'audit', label: 'Chief Proctor Security Audit Trail' },
         ].map((tab) => {
           const isActive = activeAdminTab === tab.id;
           return (
@@ -2081,6 +2144,23 @@ export const AdminConsole: React.FC = () => {
             </table>
           </div>
         </div>
+      ) : activeAdminTab === 'rules' ? (
+        <CampusRulesTab
+          campusId={currentCampus?.id || 'campus-run-ede'}
+          token={token!}
+          onAlert={(msg) => setResolutionMessage(msg)}
+        />
+      ) : activeAdminTab === 'bursary' ? (
+        <BursaryReconciliationTab
+          campusId={currentCampus?.id || 'campus-run-ede'}
+          token={token!}
+          onAlert={(msg) => setResolutionMessage(msg)}
+        />
+      ) : activeAdminTab === 'audit' ? (
+        <ProctorAuditLogTab
+          token={token!}
+          onAlert={(msg) => setResolutionMessage(msg)}
+        />
       ) : (
         <>
           {/* 4 Large KPI Cards (Screen 10 Specification) */}
@@ -2089,7 +2169,7 @@ export const AdminConsole: React.FC = () => {
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
           gap: '16px',
-          marginBottom: '28px',
+          marginBottom: '24px',
         }}
       >
         <div className="card" style={{ background: '#0F172A', borderColor: '#1E293B' }}>
@@ -2142,6 +2222,105 @@ export const AdminConsole: React.FC = () => {
           <div style={{ fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
             Registered student merchants
           </div>
+        </div>
+      </div>
+
+      {/* Option C: Campus Curfew & Test Sandbox Control Bar */}
+      <div
+        style={{
+          background: '#11192C',
+          border: '1.5px solid #1E293B',
+          borderRadius: '16px',
+          padding: '18px 24px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div
+            style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              background: 'rgba(245, 158, 11, 0.15)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#F59E0B',
+            }}
+          >
+            <Clock size={20} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#FFFFFF' }}>
+                Option C: Enterprise Campus Operations & Test Sandbox
+              </span>
+              <span
+                style={{
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  color: '#60A5FA',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                }}
+              >
+                Zero-Trust Escrow
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94A3B8', margin: '2px 0 0 0' }}>
+              Curfew enforcement active (9:00 PM cutoff). Use the sandbox controls below to generate temporary dummy transactions for testing.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={handleSeedTemporaryDummy}
+            disabled={testActionLoading}
+            style={{
+              background: '#10B981',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '9px 16px',
+              color: '#0B1120',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Zap size={14} />
+            <span>Seed Test Transactions</span>
+          </button>
+          <button
+            onClick={handleClearTemporaryDummy}
+            disabled={testActionLoading}
+            style={{
+              background: '#EF4444',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '9px 16px',
+              color: '#FFFFFF',
+              fontSize: '12px',
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Trash2 size={14} />
+            <span>Delete Test Transactions</span>
+          </button>
         </div>
       </div>
 

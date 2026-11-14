@@ -2420,6 +2420,215 @@ describe('UniHive™ Core Architecture & Security Test Suite', () => {
       expect(reinstateRes.body.data.isApproved).toBe(true);
     });
   });
+
+  describe('22. Option C: Campus Curfew Engine, Chief Proctor Audit Trail, Bursary Reconciliation & Telemetry Suite', () => {
+    let adminToken: string;
+
+    beforeEach(async () => {
+      const totpRes = await request(app).get('/api/v1/auth/demo-totp');
+      const aRes = await request(app)
+        .post('/api/v1/auth/login')
+        .send({
+          phoneOrEmail: 'admin@run.edu.ng',
+          password: 'unihive2026',
+          role: 'admin',
+          totpCode: totpRes.body.totp,
+        });
+      adminToken = aRes.body.data.token;
+    });
+
+    it('correctly calculates curfew status: active after 9:00 PM with weekday 8:00 AM & Sunday 10:00 AM resumption', () => {
+      // Test 1: Tuesday 9:15 PM (21:15) -> Curfew Active, resumes Wednesday 8:00 AM
+      const tuesdayNight = new Date('2026-11-17T21:15:00'); // Tuesday
+      const tuesdayCurfew = db.checkCurfewStatus('campus-run-ede', tuesdayNight);
+      expect(tuesdayCurfew.isCurfewActive).toBe(true);
+      expect(tuesdayCurfew.resumesAtText).toContain('Tomorrow morning at 8:00 AM');
+      expect(tuesdayCurfew.canCouriersAccept).toBe(false);
+
+      // Test 2: Saturday 9:30 PM (21:30) -> Curfew Active, resumes Sunday 10:00 AM
+      const saturdayNight = new Date('2026-11-21T21:30:00'); // Saturday
+      const saturdayCurfew = db.checkCurfewStatus('campus-run-ede', saturdayNight);
+      expect(saturdayCurfew.isCurfewActive).toBe(true);
+      expect(saturdayCurfew.resumesAtText).toContain('Tomorrow (Sunday) at 10:00 AM');
+
+      // Test 3: Sunday 8:30 AM (08:30) -> Curfew Active until 10:00 AM on Sundays
+      const sundayMorning = new Date('2026-11-22T08:30:00'); // Sunday
+      const sundayCurfew = db.checkCurfewStatus('campus-run-ede', sundayMorning);
+      expect(sundayCurfew.isCurfewActive).toBe(true);
+      expect(sundayCurfew.resumesAtText).toContain('Today (Sunday) at 10:00 AM');
+
+      // Test 4: Wednesday 2:00 PM (14:00) -> Daytime deliveries open
+      const wednesdayAfternoon = new Date('2026-11-18T14:00:00'); // Wednesday
+      const daytimeCurfew = db.checkCurfewStatus('campus-run-ede', wednesdayAfternoon);
+      expect(daytimeCurfew.isCurfewActive).toBe(false);
+      expect(daytimeCurfew.canCouriersAccept).toBe(true);
+    });
+
+    it('blocks courier delivery acceptance when curfew is active', async () => {
+      // Enable curfew override temporarily
+      db.updateCampusPolicy('campus-run-ede', { isCurfewActiveOverride: true });
+
+      const courier = db.courierProfiles.find((c) => c.campusId === 'campus-run-ede');
+      expect(courier).toBeDefined();
+
+      const testOrder: OrderEntity = {
+        id: 'order-curfew-lockout-test',
+        orderNumber: 'RUN-LOCKOUT-01',
+        campusId: 'campus-run-ede',
+        buyerId: 'user-run-buyer-1',
+        vendorId: 'vendor-tunde-kicks-run',
+        status: 'escrow_locked',
+        deliveryMethod: 'courier_runner',
+        dropoffHostelId: 'hostel-run-joshua',
+        dropoffRoom: 'Room 101',
+        contactPhone: '08123456789',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      db.orders.push(testOrder);
+
+      expect(() => {
+        DispatchService.acceptDelivery({
+          orderId: testOrder.id,
+          courierUserId: courier!.userId,
+          enforceCurfewInTest: true,
+        });
+      }).toThrow(/Campus curfew in effect \(9:00 PM cutoff\)/);
+
+      // Clean up
+      db.updateCampusPolicy('campus-run-ede', { isCurfewActiveOverride: false });
+      db.orders = db.orders.filter((o) => o.id !== testOrder.id);
+    });
+
+    it('PUT /api/v1/admin/campus-policies/:campusId updates campus delivery rules and logs proctor audit', async () => {
+      const updateRes = await request(app)
+        .put('/api/v1/admin/campus-policies/campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          baseCourierFee: 300,
+          platformTechFee: 150,
+          porterLodgeOnly: true,
+          noticeMessage: 'All night deliveries close strictly at 9:00 PM for Redeemer student safety.',
+        });
+
+      expect(updateRes.status).toBe(200);
+      expect(updateRes.body.success).toBe(true);
+      expect(updateRes.body.data.baseCourierFee).toBe(300);
+      expect(updateRes.body.data.platformTechFee).toBe(150);
+
+      // Verify Audit Log was generated
+      const auditRes = await request(app)
+        .get('/api/v1/admin/audit-logs?actionType=CAMPUS_POLICY_UPDATED')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(auditRes.status).toBe(200);
+      expect(auditRes.body.data.length).toBeGreaterThan(0);
+      expect(auditRes.body.data[0].targetEntity).toBe('campus_policy');
+
+      // Reset policy to defaults
+      db.updateCampusPolicy('campus-run-ede', {
+        baseCourierFee: 250,
+        platformTechFee: 100,
+      });
+    });
+
+    it('POST /api/v1/admin/curfew-override toggles emergency lockdown and logs to audit trail', async () => {
+      const lockRes = await request(app)
+        .post('/api/v1/admin/curfew-override')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          campusId: 'campus-run-ede',
+          isOverride: true,
+        });
+
+      expect(lockRes.status).toBe(200);
+      expect(lockRes.body.data.isCurfewActive).toBe(true);
+      expect(lockRes.body.data.isProctorOverride).toBe(true);
+
+      // Release lockdown
+      const releaseRes = await request(app)
+        .post('/api/v1/admin/curfew-override')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          campusId: 'campus-run-ede',
+          isOverride: false,
+        });
+
+      expect(releaseRes.status).toBe(200);
+      expect(releaseRes.body.data.isProctorOverride).toBe(false);
+    });
+
+    it('GET /api/v1/admin/reconciliation returns atomic split ledger and exports CSV', async () => {
+      const reconRes = await request(app)
+        .get('/api/v1/admin/reconciliation?campusId=campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(reconRes.status).toBe(200);
+      expect(reconRes.body.success).toBe(true);
+      expect(reconRes.body.data.summary).toBeDefined();
+      expect(reconRes.body.data.summary.currency).toBe('NGN');
+      expect(reconRes.body.data.batches).toBeInstanceOf(Array);
+
+      // Test CSV Export
+      const csvRes = await request(app)
+        .get('/api/v1/admin/reconciliation/export-csv?campusId=campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(csvRes.status).toBe(200);
+      expect(csvRes.headers['content-type']).toContain('text/csv');
+      expect(csvRes.text).toContain('Order Number');
+      expect(csvRes.text).toContain('Gross Inflow (NGN)');
+      expect(csvRes.text).toContain('Vendor Subtotal (NGN)');
+    });
+
+    it('GET /api/v1/admin/telemetry returns live fleet, merchants, and delivery SLA velocity metrics', async () => {
+      const telemetryRes = await request(app)
+        .get('/api/v1/admin/telemetry?campusId=campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(telemetryRes.status).toBe(200);
+      expect(telemetryRes.body.success).toBe(true);
+      expect(telemetryRes.body.data.fleet).toBeDefined();
+      expect(telemetryRes.body.data.sla).toBeDefined();
+      expect(telemetryRes.body.data.sla.targetMinutes).toBe(15);
+      expect(telemetryRes.body.data.systemHealth.status || telemetryRes.body.data.systemHealth.vaultStatus).toBeDefined();
+    });
+
+    it('supports full lifecycle of temporary dummy test transactions: seeding, verification, and complete purge', async () => {
+      // 1. Seed temporary dummy transactions
+      const seedRes = await request(app)
+        .post('/api/v1/admin/demo/seed-temporary-transactions')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ campusId: 'campus-run-ede' });
+
+      expect(seedRes.status).toBe(201);
+      expect(seedRes.body.ordersCount).toBe(3);
+
+      // 2. Verify temporary dummy transactions show up in ledger
+      const reconRes = await request(app)
+        .get('/api/v1/admin/reconciliation?campusId=campus-run-ede')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      const dummySettled = reconRes.body.data.batches.find((b: any) => b.orderNumber === 'RUN-TEMP-7701');
+      expect(dummySettled).toBeDefined();
+      expect(dummySettled.vendorSubtotal).toBe(15000);
+      expect(dummySettled.courierDeliveryFee).toBe(250);
+      expect(dummySettled.platformTechFee).toBe(100);
+
+      // 3. Clear temporary dummy transactions
+      const clearRes = await request(app)
+        .post('/api/v1/admin/demo/clear-temporary-transactions')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(clearRes.status).toBe(200);
+
+      // 4. Verify 100% purged
+      const checkOrders = db.orders.filter((o) => o.id.startsWith('order-temp-'));
+      expect(checkOrders.length).toBe(0);
+      const checkEscrows = db.escrows.filter((e) => e.id.startsWith('escrow-temp-'));
+      expect(checkEscrows.length).toBe(0);
+    });
+  });
 });
 
 

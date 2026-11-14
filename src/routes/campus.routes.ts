@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { CampusService } from '../services/campus.service.js';
+import { db } from '../services/store.js';
 
 export const campusRouter = Router();
 
@@ -32,5 +33,29 @@ campusRouter.get('/:campusId/hostels', (req, res): void => {
     success: true,
     count: hostels.length,
     data: hostels,
+  });
+});
+
+// GET /api/v1/campuses/:campusId/curfew-status (Option C: Real-time curfew query)
+campusRouter.get('/:campusId/curfew-status', (req, res): void => {
+  const campusId = req.params.campusId;
+  const status = db.checkCurfewStatus(campusId);
+  res.status(200).json({
+    success: true,
+    data: status,
+  });
+});
+
+// GET /api/v1/campuses/:campusId/policy (Option C: Campus delivery rules & fees)
+campusRouter.get('/:campusId/policy', (req, res): void => {
+  const campusId = req.params.campusId;
+  const policy = db.getCampusPolicy(campusId);
+  const curfew = db.checkCurfewStatus(campusId);
+  res.status(200).json({
+    success: true,
+    data: {
+      policy,
+      curfew,
+    },
   });
 });

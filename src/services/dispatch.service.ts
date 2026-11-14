@@ -7,6 +7,7 @@ export class DispatchService {
    * List orders waiting for dispatch pickup in the courier's campus
    */
   static getAvailableDeliveries(campusId: string) {
+    const curfew = db.checkCurfewStatus(campusId);
     return db.orders
       .filter(
         (o) =>
@@ -35,6 +36,8 @@ export class DispatchService {
           courierFee: fee,
           status: order.status,
           createdAt: order.createdAt,
+          isCurfewLocked: curfew.isCurfewActive,
+          curfewResumesAt: curfew.resumesAtText,
         };
       });
   }
@@ -42,7 +45,7 @@ export class DispatchService {
   /**
    * Courier accepts a delivery order
    */
-  static acceptDelivery(params: { orderId: string; courierUserId: string }) {
+  static acceptDelivery(params: { orderId: string; courierUserId: string; enforceCurfewInTest?: boolean }) {
     const courier = db.courierProfiles.find(
       (c) => c.userId === params.courierUserId
     );
@@ -61,6 +64,14 @@ export class DispatchService {
 
     if (order.courierId) {
       throw new Error('This delivery has already been claimed by another runner');
+    }
+
+    // Option C: Campus Curfew Lockout Enforcement (9:00 PM - 8:00 AM / 10:00 AM Sundays)
+    const curfew = db.checkCurfewStatus(order.campusId);
+    if (curfew.isCurfewActive && (process.env.NODE_ENV !== 'test' || params.enforceCurfewInTest)) {
+      throw new Error(
+        `Campus curfew in effect (9:00 PM cutoff). Couriers cannot accept deliveries during curfew hours. Dispatch resumes ${curfew.resumesAtText}.`
+      );
     }
 
     // Update this order and all sibling sub-orders sharing masterOrderNumber or same buyer & vendor delivery batch

@@ -25,6 +25,7 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedHostels, setSelectedHostels] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [curfewStatus, setCurfewStatus] = useState<any>(null);
 
   const categories = [
     { id: 'all', label: 'All Items' },
@@ -34,6 +35,17 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
     { id: 'tech', label: 'Gadgets & Tech' },
     { id: 'academics', label: 'Past Questions' },
   ];
+
+  useEffect(() => {
+    if (!currentCampus) return;
+    API.getPublicCurfewStatus(currentCampus.id)
+      .then((res: any) => {
+        if (res?.data) {
+          setCurfewStatus(res.data);
+        }
+      })
+      .catch((err: any) => console.warn('Could not fetch curfew status', err));
+  }, [currentCampus]);
 
   useEffect(() => {
     async function loadProducts() {
@@ -249,6 +261,30 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
             Payment is held in escrow until you inspect your item at the ground-floor porter desk and share your 4-digit verification code with the runner.
           </p>
         </div>
+
+        {/* Option C: Campus Curfew Active Notice (Deliveries close at 9:00 PM, resumes 8:00 AM / 10:00 AM Sundays) */}
+        {curfewStatus?.isCurfewActive && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))',
+              border: '1.5px solid rgba(245, 158, 11, 0.45)',
+              borderRadius: '14px',
+              padding: '14px 16px',
+              color: '#FFFFFF',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{ fontSize: '18px' }}>🌙</span>
+              <span style={{ fontSize: '13.5px', fontWeight: 800, color: '#FCD34D' }}>
+                Campus Curfew Active (9:00 PM Cutoff)
+              </span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#E2E8F0', margin: 0, lineHeight: 1.5 }}>
+              All runner deliveries are closed for the night until <strong>8:00 AM tomorrow morning (10:00 AM on Sundays)</strong> per university hall security guidelines. You can still order now; orders will be dispatched first thing in the morning directly to your ground-floor porter lodge!
+            </p>
+          </div>
+        )}
 
         {/* Popular Categories Scroll */}
         <div>
@@ -594,6 +630,50 @@ export const MarketplaceHome: React.FC<MarketplaceHomeProps> = ({
   // -------------------------------------------------------------
   return (
     <div style={{ padding: '24px 32px 60px', maxWidth: '1400px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Option C: Campus Curfew Active Notice (Deliveries close at 9:00 PM, resumes 8:00 AM / 10:00 AM Sundays) */}
+      {curfewStatus?.isCurfewActive && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98))',
+            border: '1.5px solid rgba(245, 158, 11, 0.45)',
+            borderRadius: '12px',
+            padding: '14px 20px',
+            color: '#FFFFFF',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '22px' }}>🌙</span>
+            <div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#FCD34D' }}>
+                Campus Curfew Active (9:00 PM Cutoff)
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#E2E8F0', marginTop: '2px' }}>
+                All runner deliveries are closed for the night until <strong>8:00 AM tomorrow (10:00 AM on Sundays)</strong> per university residence hall security rules. You can still order now; orders will be dispatched first thing in the morning directly to your hostel porter lodge!
+              </div>
+            </div>
+          </div>
+          <span
+            style={{
+              background: 'rgba(245, 158, 11, 0.2)',
+              border: '1px solid #F59E0B',
+              color: '#FCD34D',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              padding: '6px 14px',
+              borderRadius: '8px',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Morning Window Queued
+          </span>
+        </div>
+      )}
+
       {/* Category Filter Chips */}
       <div
         style={{

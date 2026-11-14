@@ -251,3 +251,148 @@ adminRouter.post('/products/:id/moderate', async (req: AuthenticatedRequest, res
     res.status(400).json({ error: 'ProductModerationFailed', message: err.message });
   }
 });
+
+// =========================================================================
+// OPTION C: ENTERPRISE COMMAND CENTER & CAMPUS OPS ARCHITECTURE ENDPOINTS
+// =========================================================================
+
+// GET /api/v1/admin/campus-policies/:campusId
+adminRouter.get('/campus-policies/:campusId', (req: AuthenticatedRequest, res: Response): void => {
+  const campusId = String(req.params.campusId);
+  const policy = AdminService.getCampusPolicy(campusId);
+  const curfewStatus = AdminService.getCurfewStatus(campusId);
+
+  res.status(200).json({
+    success: true,
+    data: {
+      policy,
+      curfewStatus,
+    },
+  });
+});
+
+// PUT /api/v1/admin/campus-policies/:campusId
+adminRouter.put('/campus-policies/:campusId', (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const campusId = String(req.params.campusId);
+    const updates = req.body;
+    const policy = AdminService.updateCampusPolicy({
+      campusId,
+      updates,
+      proctorId: req.user?.userId,
+      proctorName: 'Chief Proctor',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'Campus policies and delivery rules updated successfully.',
+      data: policy,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: 'PolicyUpdateFailed', message: err.message });
+  }
+});
+
+// POST /api/v1/admin/curfew-override
+adminRouter.post('/curfew-override', (req: AuthenticatedRequest, res: Response): void => {
+  try {
+    const { campusId, isOverride } = req.body;
+    const status = AdminService.toggleCurfewOverride({
+      campusId: campusId || 'campus-run-ede',
+      isOverride: !!isOverride,
+      proctorId: req.user?.userId,
+      proctorName: 'Chief Proctor',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: isOverride ? 'Emergency Proctor Curfew Lockdown Activated.' : 'Curfew Lockdown Released.',
+      data: status,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: 'CurfewOverrideFailed', message: err.message });
+  }
+});
+
+// GET /api/v1/admin/audit-logs
+adminRouter.get('/audit-logs', (req: AuthenticatedRequest, res: Response): void => {
+  const { actionType, proctorId, search } = req.query;
+  const logs = AdminService.getAuditLogs({
+    actionType: actionType as string,
+    proctorId: proctorId as string,
+    search: search as string,
+  });
+
+  res.status(200).json({
+    success: true,
+    count: logs.length,
+    data: logs,
+  });
+});
+
+// GET /api/v1/admin/audit-logs/export-csv
+adminRouter.get('/audit-logs/export-csv', (req: AuthenticatedRequest, res: Response): void => {
+  const { actionType, proctorId, search } = req.query;
+  const csv = AdminService.getAuditLogsCSV({
+    actionType: actionType as string,
+    proctorId: proctorId as string,
+    search: search as string,
+  });
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="proctor-security-audit-trail.csv"');
+  res.status(200).send(csv);
+});
+
+// GET /api/v1/admin/reconciliation
+adminRouter.get('/reconciliation', (req: AuthenticatedRequest, res: Response): void => {
+  const campusId = req.query.campusId as string;
+  const data = AdminService.getReconciliation(campusId);
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+// GET /api/v1/admin/reconciliation/export-csv
+adminRouter.get('/reconciliation/export-csv', (req: AuthenticatedRequest, res: Response): void => {
+  const campusId = req.query.campusId as string;
+  const csv = AdminService.getReconciliationCSV(campusId);
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="bursary-escrow-settlement-reconciliation.csv"');
+  res.status(200).send(csv);
+});
+
+// GET /api/v1/admin/telemetry
+adminRouter.get('/telemetry', (req: AuthenticatedRequest, res: Response): void => {
+  const campusId = (req.query.campusId as string) || 'campus-run-ede';
+  const data = AdminService.getTelemetry(campusId);
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
+});
+
+// POST /api/v1/admin/demo/seed-temporary-transactions
+adminRouter.post('/demo/seed-temporary-transactions', (req: AuthenticatedRequest, res: Response): void => {
+  const campusId = (req.body.campusId as string) || 'campus-run-ede';
+  const result = AdminService.seedTemporaryDummyTransactions(campusId);
+
+  res.status(201).json({
+    success: true,
+    ...result,
+  });
+});
+
+// POST /api/v1/admin/demo/clear-temporary-transactions
+adminRouter.post('/demo/clear-temporary-transactions', (req: AuthenticatedRequest, res: Response): void => {
+  const result = AdminService.clearTemporaryDummyTransactions();
+
+  res.status(200).json({
+    success: true,
+    ...result,
+  });
+});
